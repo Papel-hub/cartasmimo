@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebaseConfig';
+import { db } from '../../../lib/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
 // Tipos das opções

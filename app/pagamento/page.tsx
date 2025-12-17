@@ -30,7 +30,7 @@ interface PaymentResponse {
 export default function PagamentoPage() {
   const router = useRouter();
 
-  // Estados do carrinho (carregados do localStorage)
+  // Estados do carrinho
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [cartTotal, setCartTotal] = useState<number>(0);
   const [loadingCart, setLoadingCart] = useState(true);
@@ -43,14 +43,13 @@ export default function PagamentoPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState<string>('');
 
-  // Carregar dados do localStorage ao montar
+  // Carregar carrinho
   useEffect(() => {
     const loadCartFromStorage = () => {
       const mensagemStr = localStorage.getItem('mimo_mensagem');
       const deliveryStr = localStorage.getItem('fullDeliveryData');
 
       if (!mensagemStr) {
-        // Nenhuma mensagem encontrada → redireciona para início
         router.push('/home');
         return;
       }
@@ -74,7 +73,7 @@ export default function PagamentoPage() {
         setCartItems([item]);
         setCartTotal(Number(item.price));
       } catch (err) {
-        console.error('Erro ao carregar dados do localStorage:', err);
+        console.error(err);
         router.push('/home');
       } finally {
         setLoadingCart(false);
@@ -84,13 +83,15 @@ export default function PagamentoPage() {
     loadCartFromStorage();
   }, [router]);
 
-  // Redireciona se não estiver carregado (segurança extra)
   useEffect(() => {
     if (!loadingCart && cartItems.length === 0) {
       router.push('/home');
     }
   }, [loadingCart, cartItems, router]);
 
+  // =========================
+  // BOLETO
+  // =========================
   const handleBoletoPayment = async (boletoData: {
     first_name: string;
     last_name: string;
@@ -115,13 +116,14 @@ export default function PagamentoPage() {
         }),
       });
 
-      const  PaymentResponse = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao gerar boleto');
+      const paymentResponse: PaymentResponse = await res.json();
+
+      if (!res.ok || !paymentResponse.success) {
+        throw new Error(paymentResponse.error || 'Erro ao gerar boleto');
       }
 
-      if (data.data?.boleto_url) {
-        setBoletoUrl(data.data.boleto_url);
+      if (paymentResponse.data?.boleto_url) {
+        setBoletoUrl(paymentResponse.data.boleto_url);
       }
     } catch (err) {
       console.error(err);
@@ -131,6 +133,9 @@ export default function PagamentoPage() {
     }
   };
 
+  // =========================
+  // PIX / BOLETO SIMPLES
+  // =========================
   const handlePayment = async (method: 'pix' | 'boleto') => {
     if (!email.trim()) {
       alert('Por favor, informe seu e-mail para receber os dados do pagamento.');
@@ -150,23 +155,23 @@ export default function PagamentoPage() {
         }),
       });
 
-      const  PaymentResponse = await res.json();
+      const paymentResponse: PaymentResponse = await res.json();
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Erro ao gerar pagamento');
+      if (!res.ok || !paymentResponse.success) {
+        throw new Error(paymentResponse.error || 'Erro ao gerar pagamento');
       }
 
       if (method === 'pix') {
-        if (data.data?.qr_code_base64) {
-          setQrCode(`data:image/png;base64,${data.data.qr_code_base64}`);
+        if (paymentResponse.data?.qr_code_base64) {
+          setQrCode(`data:image/png;base64,${paymentResponse.data.qr_code_base64}`);
         }
-        if (data.data?.qr_code) {
-          setPixKey(data.data.qr_code);
+        if (paymentResponse.data?.qr_code) {
+          setPixKey(paymentResponse.data.qr_code);
         }
       }
 
-      if (method === 'boleto' && data.data?.boleto_url) {
-        setBoletoUrl(data.data.boleto_url);
+      if (method === 'boleto' && paymentResponse.data?.boleto_url) {
+        setBoletoUrl(paymentResponse.data.boleto_url);
       }
     } catch (err) {
       console.error(err);
@@ -233,30 +238,23 @@ export default function PagamentoPage() {
             />
           )}
 
-          {/* Botão Cancelar */}
-          <div className="space-y-3 pt-2">
-            <Link
-              href="/home"
-              className="w-full flex items-center justify-center gap-2 font-semibold p-3 border border-red-900 text-red-900 rounded-full hover:bg-gray-50 transition"
-            >
-              Cancelar
-            </Link>
-          </div>
+          <Link
+            href="/home"
+            className="w-full flex items-center justify-center font-semibold p-3 border border-red-900 text-red-900 rounded-full hover:bg-gray-50 transition"
+          >
+            Cancelar
+          </Link>
 
-          {/* Separador */}
           <div className="flex items-center py-2">
-            <div className="flex-grow border-t border-gray-300"></div>
+            <div className="flex-grow border-t border-gray-300" />
             <span className="mx-4 text-gray-500 text-sm font-medium">OU</span>
-            <div className="flex-grow border-t border-gray-300"></div>
+            <div className="flex-grow border-t border-gray-300" />
           </div>
 
-          {/* WhatsApp */}
-          <div className="space-y-3">
-            <button className="w-full flex items-center justify-center gap-3 p-3 border border-green-600 text-green-600 rounded-full hover:bg-green-50 font-medium transition">
-              <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
-              Finalizar via WhatsApp
-            </button>
-          </div>
+          <button className="w-full flex items-center justify-center gap-3 p-3 border border-green-600 text-green-600 rounded-full hover:bg-green-50 font-medium transition">
+            <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
+            Finalizar via WhatsApp
+          </button>
         </div>
       </main>
 

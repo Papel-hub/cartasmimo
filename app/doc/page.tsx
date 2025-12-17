@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import HeaderDoc from '@/components/HeaderDoc';
-import Footer from '@/components/Footer';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 
 export default function DocPage() {
   const docs = [
@@ -27,7 +27,7 @@ export default function DocPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      <HeaderDoc />
+      <Header />
 
       <main className="flex-grow sm:px-16 px-8 pt-24 pb-8 sm:pt-28 sm:pb-12">
       <div className="max-w-2xl mx-auto">
