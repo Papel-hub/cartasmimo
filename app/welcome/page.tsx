@@ -125,7 +125,7 @@ export default function WelcomePage() {
           {/* Botões */}
           <div className="space-y-4">
             <button
-              onClick={() => safeNavigate("/home")}
+              onClick={() => safeNavigate("/auth/login")}
               disabled={!agreed}
               className={`w-full py-4 rounded-full font-semibold transition shadow-sm ${
                 agreed
@@ -134,6 +134,18 @@ export default function WelcomePage() {
               }`}
             >
               Entrar
+            </button>
+
+            <button
+              onClick={() => safeNavigate("/home")}
+              disabled={!agreed}
+              className={`w-full py-4 rounded-full font-semibold border transition ${
+                agreed
+                  ? "border-red-900 text-red-900 hover:bg-red-50 focus:ring-2 focus:ring-red-700 focus:ring-offset-2"
+                  : "border-gray-300 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              Continuar como visitante
             </button>
           </div>
 
