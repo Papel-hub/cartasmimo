@@ -1,0 +1,31 @@
+git status
+git add .
+git commit -m "Corrige erro do useSearchParams com Suspense na página de sucesso"
+git push origin main
+......
+
+Verifique se o repositório está configurado corretamente
+
+
+Rode:   
+
+git remote -v
+
+
+
+Isso deve mostrar algo como:
+
+
+origin  https://github.com/seu-usuario/mimomeueseu.git (fetch)
+
+origin  https://github.com/seu-usuario/mimomeueseu.git (push)
+
+
+
+Se aparecer isso — ótimo, está vinculado ao GitHub.
+git pull origin main
+npm install
+npm run build
+pm2 restart mimomeueseu
+.......
+npx create-next-app@latest
