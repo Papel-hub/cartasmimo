@@ -3,12 +3,9 @@
 import React, { useState } from 'react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
-// Componentes locais
 import MensagemPreview from './components/MensagemPreview';
-import { FormatoTipo } from './components/FormatoSelector';
+import FormatoSelector, { FormatoTipo } from './components/FormatoSelector';
 import MensagemForm from './components/MensagemForm';
 import BtnCoracao from './components/BtnCoracao';
 import CartasDoCoracaoSelector from './components/CartasDoCoracaoSelector';
@@ -23,14 +20,15 @@ const cartasDoCoracao = [
 ];
 
 export default function MensagemPage() {
+
+  const [isChecked, setIsChecked] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [message, setMessage] = useState('');
-  const [isChecked, setIsChecked] = useState(false);
   const [usarCarta, setUsarCarta] = useState(false);
   const [mensagemSelecionada, setMensagemSelecionada] = useState('');
-  const [selectedFormat] = useState<FormatoTipo>('digital');
-  const [prices] = useState<Record<FormatoTipo, number>>({
+  const [selectedFormat, setSelectedFormat] = useState<FormatoTipo>('digital');
+  const [prices, setPrices] = useState<Record<FormatoTipo, number>>({
     digital: 79,
     fisico: 129,
     digital_audio: 149,
@@ -51,25 +49,19 @@ export default function MensagemPage() {
       message: mensagemFinal || '',
       format: selectedFormat,
       price: prices[selectedFormat],
-      audioFile: audioFile ? true : false, // apenas flag, pois File não serializa
+      audioFile,
       timestamp: Date.now(),
     };
 
-    // Salva no localStorage (File não pode ser serializado, então só marca presença)
     localStorage.setItem('mimo_mensagem', JSON.stringify(mensagemData));
 
     const needsAudio = ['digital_audio', 'digital_fisico_audio', 'full_premium'].includes(selectedFormat);
     const needsVideo = ['digital_video', 'full_premium'].includes(selectedFormat);
 
-    if (needsAudio && needsVideo) {
-      router.push('/midia?tipo=both');
-    } else if (needsVideo) {
-      router.push('/midia?tipo=video');
-    } else if (needsAudio) {
-      router.push('/midia?tipo=audio');
-    } else {
-      router.push('/entrega');
-    }
+    if (needsAudio && needsVideo) router.push('/midia?tipo=both');
+    else if (needsVideo) router.push('/midia?tipo=video');
+    else if (needsAudio) router.push('/midia?tipo=audio');
+    else router.push('/entrega');
   };
 
   const handleCartaCoracaoClick = () => {
@@ -81,13 +73,10 @@ export default function MensagemPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
-
       <main className="flex-grow sm:px-16 px-8 pt-24 pb-8 sm:pt-28 sm:pb-12">
         <div className="max-w-5xl mx-auto space-y-8">
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">Cartão de Mensagem</h1>
-          <p className="text-sm text-gray-600 text-center mb-6">
-            Preencha os campos e escolha o formato de envio
-          </p>
+          <p className="text-sm text-gray-600 text-center mb-6">Preencha os campos e escolha o formato de envio</p>
 
           <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 space-y-6 max-w-2xl mx-auto">
             <MensagemPreview from={from} to={to} message={message} isChecked={isChecked} />
@@ -124,28 +113,28 @@ export default function MensagemPage() {
             <AudioUpload
               audioFile={audioFile}
               setAudioFile={setAudioFile}
-              selectedFormat={selectedFormat}
+              selectedFormat={selectedFormat} // <-- adicionado
             />
 
-            <div className="space-y-3">
-              <button
-                onClick={handleGoToNextStep}
-                className="w-full font-semibold border-2 border-red-900 text-white py-3 rounded-full hover:bg-red-800 bg-red-900 transition flex justify-center items-center gap-2"
-              >
-                Continuar
-              </button>
 
-              <button
-                onClick={() => router.push('/')}
-                className="w-full flex items-center justify-center gap-2 font-bold p-3 border border-red-900 text-red-900 rounded-full hover:bg-gray-100 transition"
-              >
-                Cancelar
-              </button>
-            </div>
+            <FormatoSelector
+              selectedFormat={selectedFormat}
+              onSelectFormat={setSelectedFormat}
+              onPricesLoad={setPrices}
+            />
+
+            <button
+              onClick={handleGoToNextStep}
+              className="w-full font-semibold border border-red-900 text-white py-3 rounded-full hover:bg-red-800
+              bg-red-900 transition flex justify-center items-center gap-2"
+            >
+              {prices[selectedFormat] === 0
+                ? 'Continuar'
+                : `Continuar — R$ ${prices[selectedFormat].toFixed(2)}`}
+            </button>
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );

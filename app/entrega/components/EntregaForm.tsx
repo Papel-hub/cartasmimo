@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation';
 
 type DigitalMethod = 'whatsapp' | 'email';
 type FisicaMethod = 'correios' | 'transportadora' | 'ponto' | 'delivery' | 'uber' | 'taxi';
-type MaoAmigaMethod = 'cupidos' | 'anfitrioes' | 'influencers' | 'parceiros';
 
 // ✅ Apenas "correios" é válido no momento
 const VALID_FISICA_METHODS: FisicaMethod[] = ['correios'];
@@ -21,7 +20,6 @@ export default function EntregaForm() {
 
   const [digitalMethod, setDigitalMethod] = useState<DigitalMethod | null>(null);
   const [fisicaMethod, setFisicaMethod] = useState<FisicaMethod | null>(null);
-  const [maoAmigaMethod, setMaoAmigaMethod] = useState<MaoAmigaMethod | null>(null);
 // Dentro do componente EntregaForm
   const router = useRouter();
 
@@ -33,7 +31,6 @@ const handleContinue = () => {
     selectedDate: selectedDate ? selectedDate.toISOString() : null, // salva como string ISO
     digitalMethod,
     fisicaMethod,
-    maoAmigaMethod,
   };
 
   localStorage.setItem('deliverySelection', JSON.stringify(deliveryData));
@@ -41,25 +38,15 @@ const handleContinue = () => {
 };
   const handleDigitalSelect = (value: DigitalMethod) => {
     setDigitalMethod(value);
-    setMaoAmigaMethod(null);
   };
 
   const handleFisicaSelect = (value: FisicaMethod) => {
     setFisicaMethod(value);
-    setMaoAmigaMethod(null);
-  };
-
-  const handleMaoAmigaSelect = (value: MaoAmigaMethod) => {
-    setMaoAmigaMethod(value);
-    setDigitalMethod(null);
-    setFisicaMethod(null);
+  
   };
 
   // ✅ Validação ajustada: só aceita "correios" como método físico válido
   const canContinue = () => {
-    if (maoAmigaMethod) {
-      return true;
-    }
 
     if (tipoEntrega === 'digital') {
       return digitalMethod !== null;
@@ -120,19 +107,6 @@ const handleContinue = () => {
           Apenas <strong>Correios</strong> está disponível no momento para entregas físicas.
         </p>
       )}
-
-      <DeliveryMethodSection<MaoAmigaMethod>
-        title="Entregas Mão Amiga"
-        subtitle="(Reservado para parceiros)"
-        options={[
-          { id: 'cupidos', label: 'Cupidos' },
-          { id: 'anfitrioes', label: 'Anfitriões' },
-          { id: 'influencers', label: 'Influencers' },
-          { id: 'parceiros', label: 'Parceiros' },
-        ]}
-        selected={maoAmigaMethod}
-        onSelect={handleMaoAmigaSelect}
-      />
 
       <div className="space-y-3">
         <button
