@@ -121,10 +121,6 @@ export default function DadosEntregaPage() {
               />
             )}
 
-            <AnonymousCheckbox
-              checked={isAnonymous}
-              onChange={setIsAnonymous}
-            />
 
             <div className="space-y-3">
               <button

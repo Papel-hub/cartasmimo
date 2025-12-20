@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import EntregaTypeSection from './EntregaTypeSection';
 import DeliveryCalendar from './DeliveryCalendar';
 import DeliveryMethodSection from './DeliveryMethodSection';
@@ -9,7 +10,7 @@ import { useRouter } from 'next/navigation';
 
 
 type DigitalMethod = 'whatsapp' | 'email';
-type FisicaMethod = 'correios' | 'local' | 'whatsapp' ;
+type FisicaMethod = 'correios' | 'local' ;
 
 // ✅ Apenas "correios" é válido no momento
 const VALID_FISICA_METHODS: FisicaMethod[] = ['correios'];
@@ -91,8 +92,6 @@ const handleContinue = () => {
           options={[
             { id: 'correios', label: 'Correios' },
             { id: 'local', label: 'Ponto de Recolha' },
-            { id: 'whatsapp', label: 'Continuar no WhatsApp' },
-
           ]}
           selected={fisicaMethod}
           onSelect={handleFisicaSelect}
@@ -107,6 +106,10 @@ const handleContinue = () => {
       )}
 
       <div className="space-y-3">
+          <button className="w-full flex items-center justify-center gap-3 p-3 border border-green-600 text-green-600 rounded-full hover:bg-green-50 font-medium transition">
+            <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
+            Finalizar via WhatsApp
+          </button>
         <button
           type="button"
           onClick={handleContinue} 
