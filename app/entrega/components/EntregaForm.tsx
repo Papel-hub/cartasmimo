@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 
 
 type DigitalMethod = 'whatsapp' | 'email';
-type FisicaMethod = 'correios' | 'transportadora' | 'ponto' | 'delivery' | 'uber' | 'taxi';
+type FisicaMethod = 'correios' | 'local' | 'whatsapp' ;
 
 // ✅ Apenas "correios" é válido no momento
 const VALID_FISICA_METHODS: FisicaMethod[] = ['correios'];
@@ -90,11 +90,9 @@ const handleContinue = () => {
           title="Entregas Físicas"
           options={[
             { id: 'correios', label: 'Correios' },
-            { id: 'transportadora', label: 'Transportadoras/Cliente' },
-            { id: 'ponto', label: 'Ponto de Recolha' },
-            { id: 'delivery', label: 'Delivery' },
-            { id: 'uber', label: 'Uber' },
-            { id: 'taxi', label: 'Táxi' },
+            { id: 'local', label: 'Ponto de Recolha' },
+            { id: 'whatsapp', label: 'Continuar no WhatsApp' },
+
           ]}
           selected={fisicaMethod}
           onSelect={handleFisicaSelect}
