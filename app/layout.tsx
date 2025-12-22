@@ -11,7 +11,6 @@ const circularStd = localFont({
   display: "swap",
 });
 
-// 🔴 Corrigido: removido espaços extras
 const siteUrl = "https://cartasdamimo.com";
 
 export const metadata: Metadata = {
@@ -60,27 +59,17 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* 👇 Favicon padrão */}
         <link rel="icon" href="/favicon.ico" />
-
-        {/* 👇 Ícones Apple (iOS) */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-
-        {/* 👇 Ícones Android / Chrome */}
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
-
-        {/* 👇 Manifest para PWA */}
         <link rel="manifest" href="/site.webmanifest" />
 
-        {/* 👇 Meta tags para iOS PWA */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Mimo Meu e Seu" />
-
-        {/* 👇 Theme color */}
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111827" />
         <meta name="color-scheme" content="light dark" />

@@ -120,52 +120,51 @@ const saveOrderToFirestore = async (paymentData: any) => {
     const deliveryStr = localStorage.getItem('fullDeliveryData');
     const mensagemStr = localStorage.getItem('mimo_mensagem');
     
+    // Fallback para objeto vazio se não houver nada no localStorage
     const delivery = deliveryStr ? JSON.parse(deliveryStr) : {};
     const mensagem = mensagemStr ? JSON.parse(mensagemStr) : {};
 
     const docRef = await addDoc(collection(db, "pedidos"), {
-      // 1. Identificação Básica
       cliente_email: email || delivery.email || "Não informado",
       status: "pendente",
       valor_total: cartTotal,
       metodo_pagamento: metodo,
       
-      // 2. A CARTA (O que você escreveu na /home)
       carta: {
-        de: mensagem.from, // Aqui já vem "Anônimo" se o usuário marcou o checkbox
-        para: mensagem.to,
-        mensagem: mensagem.message,
-        formato_slug: mensagem.format,
-        data_escolhida: delivery.selectedDate // Data que ele escolheu no calendário
+        de: mensagem.from || "Anônimo", 
+        para: mensagem.to || "Não informado",
+        mensagem: mensagem.message || "",
+        formato_slug: mensagem.format || "digital",
+        // CORREÇÃO AQUI: Garante que nunca seja undefined
+        data_escolhida: delivery.selectedDate || null 
       },
 
-      // 3. LOGÍSTICA (Onde e como entregar)
       entrega: {
-        tipo: delivery.tipoEntrega, // digital, fisica ou ambos
-        metodo_digital: delivery.digitalMethod, // whatsapp ou email
-        metodo_fisico: delivery.fisicaMethod, // correios ou local
-        endereco_completo: delivery.endereco,
-        cpe: delivery.cpe,
-        whatsapp_contato: delivery.whatsapp
+        tipo: delivery.tipoEntrega || null,
+        metodo_digital: delivery.digitalMethod || null,
+        metodo_fisico: delivery.fisicaMethod || null,
+        endereco_completo: delivery.endereco || null,
+        cpe: delivery.cpe || null,
+        whatsapp_contato: delivery.whatsapp || null
       },
 
-      // 4. ARQUIVOS NA VPS
       arquivos_vps: {
-        audio_url: localStorage.getItem('mimo_final_audio') || null,
-        video_url: localStorage.getItem('mimo_final_video') || null
+        // getItem já retorna null se não existir, o que o Firebase aceita
+        audio_url: localStorage.getItem('mimo_final_audio'), 
+        video_url: localStorage.getItem('mimo_final_video')
       },
 
-      // 5. RASTREIO E TEMPO
       criado_em: serverTimestamp(),
-      payment_id: paymentData?.id || null, // ID do Mercado Pago para o Webhook achar
+      payment_id: paymentData?.id?.toString() || null, // Garante que seja string ou null
       payment_status: paymentData?.status || "pending"
     });
 
-    console.log("✅ Pedido registrado no Firestore com ID:", docRef.id);
+    console.log("✅ Pedido registrado no Firestore:", docRef.id);
     return docRef.id;
   } catch (e) {
     console.error("❌ Erro crítico ao salvar pedido:", e);
-    alert("Erro ao registrar pedido. Por favor, tire um print desta tela e nos chame no WhatsApp.");
+    // Log mais detalhado para você debugar se houver outro campo undefined
+    throw e; 
   }
 };
 const handlePayment = async (method: 'pix' | 'boleto') => {

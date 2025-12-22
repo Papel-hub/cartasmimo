@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { db } from '../../../lib/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import React from 'react';
 import { 
   DevicePhoneMobileIcon, 
   EnvelopeIcon, 
@@ -19,16 +17,6 @@ export type FormatoTipo =
   | 'digital_fisico_audio'
   | 'full_premium';
 
-const DEFAULT_PRECOS: Record<FormatoTipo, number> = {
-  digital: 79,
-  fisico: 129,
-  digital_audio: 149,
-  digital_video: 179,
-  digital_fisico_audio: 249,
-  full_premium: 319,
-};
-
-// Mapeamento de Labels e Ícones para o novo design
 const FORMAT_INFO: Record<FormatoTipo, { label: string; icon: any; description: string }> = {
   digital: { label: 'Cartão Digital', icon: DevicePhoneMobileIcon, description: 'Entrega rápida por E-mail ou Whats' },
   fisico: { label: 'Cartão Físico', icon: EnvelopeIcon, description: 'Papel especial e entrega via Correios' },
@@ -45,37 +33,15 @@ const FORMAT_INFO: Record<FormatoTipo, { label: string; icon: any; description: 
 type FormatoSelectorProps = {
   selectedFormat: FormatoTipo;
   onSelectFormat: (format: FormatoTipo) => void;
-  onPricesLoad: (prices: Record<FormatoTipo, number>) => void;
+  prices: Record<FormatoTipo, number>; // Recebe os preços da HomePage
 };
 
 export default function FormatoSelector({
   selectedFormat,
   onSelectFormat,
-  onPricesLoad,
+  prices, // Agora usamos a prop diretamente
 }: FormatoSelectorProps) {
-  const [prices, setPrices] = useState<Record<FormatoTipo, number>>(DEFAULT_PRECOS);
-
-  useEffect(() => {
-    const fetchPrices = async () => {
-      try {
-        const docRef = doc(db, 'config', 'mensagem');
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const updatedPrices = { ...DEFAULT_PRECOS };
-          (Object.keys(DEFAULT_PRECOS) as FormatoTipo[]).forEach((key) => {
-            if (typeof data[key] === 'number') updatedPrices[key] = data[key];
-          });
-          setPrices(updatedPrices);
-          onPricesLoad(updatedPrices);
-        }
-      } catch (err) {
-        onPricesLoad(DEFAULT_PRECOS);
-      }
-    };
-    fetchPrices();
-  }, [onPricesLoad]);
-
+  
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
@@ -87,6 +53,7 @@ export default function FormatoSelector({
         {(Object.keys(FORMAT_INFO) as FormatoTipo[]).map((key) => {
           const Icon = FORMAT_INFO[key].icon;
           const isSelected = selectedFormat === key;
+          const preco = prices[key] || 0;
 
           return (
             <label
@@ -115,19 +82,18 @@ export default function FormatoSelector({
                   <p className={`font-bold text-sm ${isSelected ? 'text-red-950' : 'text-gray-700'}`}>
                     {FORMAT_INFO[key].label}
                   </p>
-<p className="text-[11px] text-gray-400">
-  {key.includes('audio') || key.includes('video') || key === 'full_premium' 
-    ? 'Inclui mídia personalizada' 
-    : 'Apenas mensagem'}
-</p>
+                  <p className="text-[11px] text-gray-400">
+                    {key.includes('audio') || key.includes('video') || key === 'full_premium' 
+                      ? 'Inclui mídia personalizada' 
+                      : 'Apenas mensagem'}
+                  </p>
                 </div>
               </div>
 
               <div className={`font-semibold text-sm ${isSelected ? 'text-red-900' : 'text-gray-900'}`}>
-                {prices[key] === 0 ? 'Grátis' : `R$ ${prices[key].toFixed(2)}`}
+                {preco === 0 ? 'Grátis' : `R$ ${preco.toFixed(2).replace('.', ',')}`}
               </div>
 
-              {/* Checkmark animado */}
               {isSelected && (
                 <div className="absolute -top-2 -right-2 bg-red-900 text-white rounded-full p-1 shadow-lg animate-in zoom-in">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
