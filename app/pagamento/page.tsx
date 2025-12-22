@@ -1,4 +1,3 @@
-// app/pagamento/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,6 +10,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+
 // Components
 import PaymentMethodSelector from './components/PaymentMethodSelector';
 import PixPaymentSection from './components/PixPaymentSection';
@@ -21,7 +21,7 @@ type PaymentMethod = 'pix' | 'cartao' | 'boleto' | '';
 
 interface PaymentResponse {
   success: boolean;
-  data?: { qr_code?: string; qr_code_base64?: string; boleto_url?: string; status?: string };
+  data?: { id?: string; qr_code?: string; qr_code_base64?: string; boleto_url?: string; status?: string };
   error?: string;
 }
 
@@ -40,10 +40,9 @@ export default function PagamentoPage() {
   const [pixKey, setPixKey] = useState<string | null>(null);
   const [boletoUrl, setBoletoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const WHATSAPP_NUMBER = '5567992236484';
   const [email, setEmail] = useState<string>(''); 
-   
-  
+
+  const WHATSAPP_NUMBER = '5567992236484';
 
   // =========================
   // LOAD CART
@@ -83,197 +82,170 @@ export default function PagamentoPage() {
     loadCart();
   }, [router]);
 
-const handleBoletoPayment = async (boletoData: {
-  first_name: string;
-  last_name: string;
-  identification: { type: string; number: string };
-}) => {
-  setLoading(true);
-  try {
-    const res = await fetch('/api/payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: cartTotal,
-        email,
-        description: 'Pagamento Mimo',
-        method: 'boleto',
-        ...boletoData,
-      }),
-    });
-
-    const data: PaymentResponse = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.error || 'Erro ao gerar boleto');
-
-    if (data.data?.boleto_url) {
-      setBoletoUrl(data.data.boleto_url);
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Não foi possível gerar o boleto.');
-  } finally {
-    setLoading(false);
-  }
-};
-const saveOrderToFirestore = async (paymentData: any) => {
-  try {
-    const deliveryStr = localStorage.getItem('fullDeliveryData');
-    const mensagemStr = localStorage.getItem('mimo_mensagem');
+  // =========================
+  // SALVAMENTO UNIVERSAL
+  // =========================
+  const saveOrderUniversal = async (type: 'checkout' | 'whatsapp', paymentData?: any) => {
+    const delivery = JSON.parse(localStorage.getItem('fullDeliveryData') || '{}');
+    const mensagem = JSON.parse(localStorage.getItem('mimo_mensagem') || '{}');
     
-    // Fallback para objeto vazio se não houver nada no localStorage
-    const delivery = deliveryStr ? JSON.parse(deliveryStr) : {};
-    const mensagem = mensagemStr ? JSON.parse(mensagemStr) : {};
+    // Gerar um ID amigável para exibir ao usuário
+    const customId = type === 'whatsapp' 
+      ? `WPP-${Math.random().toString(36).substr(2, 6).toUpperCase()}` 
+      : `SITE-${Date.now().toString().slice(-6)}`;
 
-    const docRef = await addDoc(collection(db, "pedidos"), {
-      cliente_email: email || delivery.email || "Não informado",
-      status: "pendente",
-      valor_total: cartTotal,
-      metodo_pagamento: metodo,
+    const orderData = {
+      pedidoId: customId,
+      origem: type,
+      status: type === 'whatsapp' ? "finalizado_whatsapp" : "pendente",
       
-      carta: {
-        de: mensagem.from || "Anônimo", 
-        para: mensagem.to || "Não informado",
-        mensagem: mensagem.message || "",
+      cliente: {
+        email: email || delivery.email || "Não informado",
+        nome: delivery.nome || "Não informado",
+        whatsapp: delivery.whatsapp || "Não informado"
+      },
+      
+      conteudo: {
+        de: mensagem.from || "Anônimo",
+        para: mensagem.to || delivery.destinatario || "Não informado",
+        texto: mensagem.message || "Sem mensagem",
         formato_slug: mensagem.format || "digital",
-        // CORREÇÃO AQUI: Garante que nunca seja undefined
-        data_escolhida: delivery.selectedDate || null 
+        data_entrega: delivery.selectedDate || null,
+        audio_url: localStorage.getItem('mimo_final_audio') || null,
+        video_url: localStorage.getItem('mimo_final_video') || null
       },
 
-      entrega: {
-        tipo: delivery.tipoEntrega || null,
-        metodo_digital: delivery.digitalMethod || null,
-        metodo_fisico: delivery.fisicaMethod || null,
-        endereco_completo: delivery.endereco || null,
+      logistica: {
+        tipo: delivery.tipoEntrega || "digital",
+        endereco: delivery.endereco || null,
         cpe: delivery.cpe || null,
-        whatsapp_contato: delivery.whatsapp || null
+        metodo_digital: delivery.digitalMethod || null,
+        metodo_fisico: delivery.fisicaMethod || null
       },
 
-      arquivos_vps: {
-        // getItem já retorna null se não existir, o que o Firebase aceita
-        audio_url: localStorage.getItem('mimo_final_audio'), 
-        video_url: localStorage.getItem('mimo_final_video')
+      financeiro: {
+        total: cartTotal,
+        metodo: type === 'whatsapp' ? "whatsapp" : (metodo || "pix"),
+        payment_id: paymentData?.id?.toString() || null,
+        payment_status: paymentData?.status || "pending"
       },
 
       criado_em: serverTimestamp(),
-      payment_id: paymentData?.id?.toString() || null, // Garante que seja string ou null
-      payment_status: paymentData?.status || "pending"
-    });
+    };
 
-    console.log("✅ Pedido registrado no Firestore:", docRef.id);
-    return docRef.id;
-  } catch (e) {
-    console.error("❌ Erro crítico ao salvar pedido:", e);
-    // Log mais detalhado para você debugar se houver outro campo undefined
-    throw e; 
-  }
-};
-const handlePayment = async (method: 'pix' | 'boleto') => {
-  if (!email) {
-    alert("Por favor, preencha o e-mail para continuar.");
-    return;
-  }
+    await addDoc(collection(db, "pedidos"), orderData);
+    return orderData; // Retornamos os dados para usar na mensagem do WhatsApp
+  };
 
-  setLoading(true);
-  try {
-    const res = await fetch('/api/payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amount: cartTotal,
-        email,
-        description: 'Mimo Personalizado - Pedido',
-        method: method,
-      }),
-    });
-
-    const data: PaymentResponse = await res.json();
-
-    if (!res.ok || !data.success) throw new Error(data.error || 'Erro no pagamento');
-
-    // ✅ SUCESSO NO PAGAMENTO -> SALVAR NO FIREBASE
-    await saveOrderToFirestore(data.data);
-
-    if (method === 'pix' && data.data?.qr_code) {
-      setQrCode(`data:image/png;base64,${data.data.qr_code_base64}`);
-      setPixKey(data.data.qr_code);
+  // =========================
+  // HANDLERS DE PAGAMENTO
+  // =========================
+  const handlePayment = async (method: 'pix' | 'boleto') => {
+    if (!email) {
+      alert("Por favor, preencha o e-mail para continuar.");
+      return;
     }
 
-    if (method === 'boleto' && data.data?.boleto_url) {
-      setBoletoUrl(data.data.boleto_url);
+    setLoading(true);
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: cartTotal,
+          email,
+          description: 'Mimo Personalizado - Pedido',
+          method: method,
+        }),
+      });
+
+      const data: PaymentResponse = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Erro no pagamento');
+
+      // ✅ SALVAR NO FIREBASE COM DADOS DO MERCADO PAGO
+      await saveOrderUniversal('checkout', data.data);
+
+      if (method === 'pix' && data.data?.qr_code) {
+        setQrCode(`data:image/png;base64,${data.data.qr_code_base64}`);
+        setPixKey(data.data.qr_code);
+      }
+
+      if (method === 'boleto' && data.data?.boleto_url) {
+        setBoletoUrl(data.data.boleto_url);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao processar pagamento. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    alert('Erro ao processar. Verifique os dados e tente novamente.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-const handleWhatsAppFinalization = async () => {
-  const deliveryStr = localStorage.getItem('fullDeliveryData');
-  const delivery = deliveryStr ? JSON.parse(deliveryStr) : {};
-  
-  const title = cartItems[0]?.title ?? 'Carta Mimo';
-  const total = cartTotal;
-  const pedidoId = `WPP-${crypto.randomUUID().split('-')[0].toUpperCase()}`; // Ex: WPP-A1B2C3
+  // Handler específico para formulário de boleto (que envia dados do pagador)
+  const handleBoletoPayment = async (boletoData: any) => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: cartTotal,
+          email,
+          description: 'Pagamento Mimo',
+          method: 'boleto',
+          ...boletoData,
+        }),
+      });
 
-  try {
-    // 1. SALVAR NO FIREBASE
-    await addDoc(collection(db, "pedidos"), {
-      pedidoId,
-      status: "finalizado_whatsapp",
-      data: new Date().toISOString(),
-      cliente: {
-        email: delivery.email || 'Via WhatsApp',
-        nome: delivery.nome || 'Não informado',
-      },
-      itens: cartItems,
-      total: total,
-      entrega: delivery,
-      origem: "whatsapp"
-    });
+      const data: PaymentResponse = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Erro ao gerar boleto');
 
-    // 2. MONTAR A MENSAGEM DO WHATSAPP
-    const text = `*Pedido: ${pedidoId}* 
-*Status: Aguardando Pagamento*
+      await saveOrderUniversal('checkout', data.data);
+
+      if (data.data?.boleto_url) {
+        setBoletoUrl(data.data.boleto_url);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Não foi possível gerar o boleto.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWhatsAppFinalization = async () => {
+    setLoading(true);
+    try {
+      // ✅ SALVAR NO FIREBASE PRIMEIRO
+      const savedData = await saveOrderUniversal('whatsapp');
+
+      // ✅ MONTAR MENSAGEM COM OS DADOS RETORNADOS
+      const msgParaWpp = `*NOVO PEDIDO: ${savedData.pedidoId}*
 ----------------------------------
-*Produto:* ${title}
-*Total:* R$ ${total.toFixed(2).replace('.', ',')}
-
-*DETALHES DA ENTREGA:*
-*Tipo:* ${delivery.tipoEntrega}
-*Data Prevista:* ${delivery.selectedDate || 'A definir'}
-*Destinatário:* ${delivery.destinatario || 'Não informado'}
-
-*MÉTODOS:*
-${delivery.digitalMethod ? `• Digital: ${delivery.digitalMethod}` : ''}
-${delivery.fisicaMethod ? `• Físico: ${delivery.fisicaMethod}` : ''}
+*De:* ${savedData.conteudo.de}
+*Para:* ${savedData.conteudo.para}
+*Formato:* ${savedData.conteudo.formato_slug}
+*Total:* R$ ${cartTotal.toFixed(2).replace('.', ',')}
 ----------------------------------
-Olá! Acabei de gerar meu pedido *${pedidoId}* no site e gostaria de finalizar o pagamento por aqui.`;
+Olá! Acabei de gerar meu pedido no site e quero finalizar o pagamento por aqui.`;
 
-    // 3. ABRIR O WHATSAPP
-    const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
-    window.open(whatsappLink, '_blank');
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msgParaWpp)}`;
+      window.open(whatsappUrl, '_blank');
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao salvar pedido via WhatsApp.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  } catch (error) {
-    console.error("Erro ao salvar pedido via WhatsApp:", error);
-    alert("Houve um erro ao registrar seu pedido. Tente novamente.");
-  }
-};
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
 
       <main className="flex-grow sm:px-16 px-8 pt-24 pb-8 sm:pt-28 sm:pb-12">
-
-
-        {/* Título */}
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-          Pagamento
-        </h1>
-        <p className="text-sm text-gray-600 text-center mb-8">
-          Escolha o seu tipo de pagamento
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">Pagamento</h1>
+        <p className="text-sm text-gray-600 text-center mb-8">Escolha o seu tipo de pagamento</p>
 
         <div className="max-w-md mx-auto mb-2 text-center">
           <p className="text-gray-700">
@@ -284,7 +256,6 @@ Olá! Acabei de gerar meu pedido *${pedidoId}* no site e gostaria de finalizar o
           </p>
         </div>
 
-          {/* Card principal */}
         <div className="bg-white rounded-2xl shadow-md p-8 space-y-8 max-w-lg mx-auto">
           <PaymentMethodSelector value={metodo} onChange={setMetodo} />
 
@@ -311,32 +282,31 @@ Olá! Acabei de gerar meu pedido *${pedidoId}* no site e gostaria de finalizar o
             />
           )}
 
-                {/* Botões de ação */}
-                <div className="space-y-3 pt-2">
-                  <Link
-                    href="/home"
-                    className="w-full flex items-center justify-center gap-2 font-semibold p-3 border border-red-900 text-red-900 rounded-full hover:bg-gray-50 transition"
-                  >
-                    Cancelar
-                  </Link>
-                </div>
-                {/* Separador */}
-                <div className="flex items-center py-2">
-                  <div className="flex-grow border-t border-gray-300"></div>
-                  <span className="mx-4 text-gray-500 text-sm font-medium">OU</span>
-                  <div className="flex-grow border-t border-gray-300"></div>
-                </div>
-      
-                {/* Alternativas de pagamento */}
-                <div className="space-y-3">
-<button
-  onClick={handleWhatsAppFinalization}
-  className="w-full flex items-center justify-center gap-3 p-3 border-2 border-green-500 text-green-700 rounded-full hover:bg-green-50 font-semibold transition-all active:scale-95 shadow-sm"
->
-  <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
-  Finalizar via WhatsApp
-</button>
-                </div>
+          <div className="space-y-3 pt-2">
+            <Link
+              href="/home"
+              className="w-full flex items-center justify-center gap-2 font-semibold p-3 border border-red-900 text-red-900 rounded-full hover:bg-gray-50 transition"
+            >
+              Cancelar
+            </Link>
+          </div>
+
+          <div className="flex items-center py-2">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="mx-4 text-gray-500 text-sm font-medium">OU</span>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={handleWhatsAppFinalization}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 p-3 border-2 border-green-500 text-green-700 rounded-full hover:bg-green-50 font-semibold transition-all active:scale-95 shadow-sm disabled:opacity-50"
+            >
+              <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
+              {loading ? 'Processando...' : 'Finalizar via WhatsApp'}
+            </button>
+          </div>
         </div>
       </main>
          
