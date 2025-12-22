@@ -3,8 +3,14 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../../lib/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
+import { 
+  DevicePhoneMobileIcon, 
+  EnvelopeIcon, 
+  SpeakerWaveIcon, 
+  VideoCameraIcon, 
+  SparklesIcon 
+} from '@heroicons/react/24/outline';
 
-// Tipos das opções
 export type FormatoTipo =
   | 'digital'
   | 'fisico'
@@ -13,7 +19,6 @@ export type FormatoTipo =
   | 'digital_fisico_audio'
   | 'full_premium';
 
-// Fallback seguro
 const DEFAULT_PRECOS: Record<FormatoTipo, number> = {
   digital: 79,
   fisico: 129,
@@ -23,13 +28,18 @@ const DEFAULT_PRECOS: Record<FormatoTipo, number> = {
   full_premium: 319,
 };
 
-const LABELS: Record<FormatoTipo, string> = {
-  digital: 'Cartão digital',
-  fisico: 'Cartão físico',
-  digital_audio: 'Digital + Áudio',
-  digital_video: 'Digital + Vídeo',
-  digital_fisico_audio: 'Digital e Físico + Áudio',
-  full_premium: 'Físico + Digital + Áudio + Vídeo',
+// Mapeamento de Labels e Ícones para o novo design
+const FORMAT_INFO: Record<FormatoTipo, { label: string; icon: any; description: string }> = {
+  digital: { label: 'Cartão Digital', icon: DevicePhoneMobileIcon, description: 'Entrega rápida por E-mail ou Whats' },
+  fisico: { label: 'Cartão Físico', icon: EnvelopeIcon, description: 'Papel especial e entrega via Correios' },
+  digital_audio: { label: 'Digital + Áudio', icon: SpeakerWaveIcon, description: 'Sua voz gravada na mensagem' },
+  digital_video: { label: 'Digital + Vídeo', icon: VideoCameraIcon, description: 'Um vídeo especial para emocionar' },
+  digital_fisico_audio: { label: 'Digital e Físico + Áudio', icon: SparklesIcon, description: 'O melhor dos dois mundos + Áudio' },
+  full_premium: { 
+    label: 'Experiência Full Premium', 
+    icon: SparklesIcon, 
+    description: 'Físico, Digital, Áudio e Vídeo (Completo)' 
+  },
 };
 
 type FormatoSelectorProps = {
@@ -54,48 +64,80 @@ export default function FormatoSelector({
           const data = docSnap.data();
           const updatedPrices = { ...DEFAULT_PRECOS };
           (Object.keys(DEFAULT_PRECOS) as FormatoTipo[]).forEach((key) => {
-            if (typeof data[key] === 'number') {
-              updatedPrices[key] = data[key];
-            }
+            if (typeof data[key] === 'number') updatedPrices[key] = data[key];
           });
           setPrices(updatedPrices);
           onPricesLoad(updatedPrices);
         }
       } catch (err) {
-        console.warn('Falha ao carregar preços. Usando valores padrão.', err);
         onPricesLoad(DEFAULT_PRECOS);
       }
     };
-
     fetchPrices();
   }, [onPricesLoad]);
 
   return (
-    <div className="border-t pt-4 mt-4 space-y-3">
-      <h2 className="text-lg font-semibold text-gray-800 text-center">Formato de envio</h2>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="w-8 h-px bg-gray-200"></span>
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Escolha o Formato</h2>
+      </div>
+
       <div className="grid grid-cols-1 gap-3">
-        {(Object.keys(LABELS) as FormatoTipo[]).map((key) => (
-          <label
-            key={key}
-            className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-              selectedFormat === key
-                ? 'border-red-900 bg-red-50'
-                : 'border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <input
-              type="radio"
-              name="format"
-              checked={selectedFormat === key}
-              onChange={() => onSelectFormat(key)}
-              className="sr-only"
-            />
-            <div className="flex-1 text-gray-800 font-medium">{LABELS[key]}</div>
-            <div className="text-gray-600">
-              {prices[key] === 0 ? 'Grátis' : `R$ ${prices[key].toFixed(2)}`}
-            </div>
-          </label>
-        ))}
+        {(Object.keys(FORMAT_INFO) as FormatoTipo[]).map((key) => {
+          const Icon = FORMAT_INFO[key].icon;
+          const isSelected = selectedFormat === key;
+
+          return (
+            <label
+              key={key}
+              className={`group relative flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
+                isSelected
+                  ? 'border-red-900 bg-red-50/50 ring-4 ring-red-900/5'
+                  : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <input
+                type="radio"
+                name="format"
+                checked={isSelected}
+                onChange={() => onSelectFormat(key)}
+                className="sr-only"
+              />
+              
+              <div className="flex items-center gap-4">
+                <div className={`p-2 rounded-xl transition-colors ${
+                  isSelected ? 'bg-red-900 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'
+                }`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className={`font-bold text-sm ${isSelected ? 'text-red-950' : 'text-gray-700'}`}>
+                    {FORMAT_INFO[key].label}
+                  </p>
+<p className="text-[11px] text-gray-400">
+  {key.includes('audio') || key.includes('video') || key === 'full_premium' 
+    ? 'Inclui mídia personalizada' 
+    : 'Apenas mensagem'}
+</p>
+                </div>
+              </div>
+
+              <div className={`font-semibold text-sm ${isSelected ? 'text-red-900' : 'text-gray-900'}`}>
+                {prices[key] === 0 ? 'Grátis' : `R$ ${prices[key].toFixed(2)}`}
+              </div>
+
+              {/* Checkmark animado */}
+              {isSelected && (
+                <div className="absolute -top-2 -right-2 bg-red-900 text-white rounded-full p-1 shadow-lg animate-in zoom-in">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+            </label>
+          );
+        })}
       </div>
     </div>
   );

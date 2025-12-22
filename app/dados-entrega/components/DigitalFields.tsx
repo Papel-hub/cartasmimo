@@ -1,54 +1,50 @@
+// components/DigitalFields.tsx
 import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
-type Props = {
-  method: 'email' | 'whatsapp' | null;
+interface DigitalFieldsProps {
+  method: 'whatsapp' | 'email' | null;
   email: string;
-  setEmail: (v: string) => void;
+  setEmail: (val: string) => void;
   whatsapp: string;
-  setWhatsapp: (v: string) => void;
-};
+  setWhatsapp: (val: string) => void;
+}
 
-export default function DigitalFields({
-  method,
-  email,
-  setEmail,
-  whatsapp,
-  setWhatsapp,
-}: Props) {
-  return (
-    <div className="space-y-4">
-      {method === 'email' && (
-        <div>
-          <label className="block text-sm font-medium mb-1">E-mail</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-2 border rounded-md"
+export default function DigitalFields({ method, email, setEmail, whatsapp, setWhatsapp }: DigitalFieldsProps) {
+  if (method === 'email') {
+    return (
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">E-mail do Destinatário</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="exemplo@email.com"
+          className="w-full p-3 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-red-900/20 outline-none transition-all"
+        />
+      </div>
+    );
+  }
+
+  if (method === 'whatsapp') {
+    return (
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">WhatsApp do Destinatário</label>
+        <div className="phone-input-container">
+          <PhoneInput
+            country={'br'} // Define Brasil como padrão
+            value={whatsapp}
+            onChange={(phone) => setWhatsapp(phone)}
+            containerClass="!w-full"
+            inputClass="!w-full !h-[58px] !rounded-2xl !border-gray-200 !text-base focus:!ring-2 focus:!ring-red-900/20"
+            buttonClass="!rounded-l-2xl !border-gray-200 !bg-white"
+            placeholder="(67) 99999-9999"
+            masks={{ br: '(..) .....-....' }}
           />
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {method === 'whatsapp' && (
-        <div>
-          <label className="block text-sm font-medium mb-1">WhatsApp</label>
-<PhoneInput
-  country="br"
-  value={whatsapp}
-  onChange={setWhatsapp}
-  enableSearch
-  inputStyle={{
-    width: '100%',
-    height: '42px',
-    borderRadius: '0.375rem',
-  }}
-  buttonStyle={{
-    borderRadius: '0.375rem 0 0 0.375rem',
-  }}
-/>
-
-        </div>
-      )}
-    </div>
-  );
+  return null;
 }

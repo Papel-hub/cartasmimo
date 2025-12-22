@@ -1,7 +1,7 @@
 // app/pagamento/components/PaymentMethodSelector.tsx
 import { useRef } from 'react';
 
-type PaymentMethod = 'pix' | 'cartaomimo' | 'cartao' | 'boleto' | '';
+type PaymentMethod = 'pix' | 'cartao' | 'boleto' | '';
 
 interface PaymentMethodSelectorProps {
   value: PaymentMethod;
@@ -26,7 +26,6 @@ export default function PaymentMethodSelector({ value, onChange }: PaymentMethod
           >
           <option value="">Selecione o tipo</option>
           <option value="pix">PIX</option>
-          <option value="cartaomimo">Cartão Mimo</option>
           <option value="cartao">Cartão de Crédito</option>
           <option value="boleto">Boleto</option>
         </select>

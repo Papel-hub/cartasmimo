@@ -1,128 +1,137 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import EntregaTypeSection from './EntregaTypeSection';
 import DeliveryCalendar from './DeliveryCalendar';
 import DeliveryMethodSection from './DeliveryMethodSection';
-// Adicione este import no topo
 import { useRouter } from 'next/navigation';
 
-
 type DigitalMethod = 'whatsapp' | 'email';
-type FisicaMethod = 'correios' | 'local' ;
+type FisicaMethod = 'correios' | 'local';
 
-// ✅ Apenas "correios" é válido no momento
 const VALID_FISICA_METHODS: FisicaMethod[] = ['correios'];
 
 export default function EntregaForm() {
+  const router = useRouter();
+  
   const [tipoEntrega, setTipoEntrega] = useState<'digital' | 'fisica' | 'ambos'>('digital');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-
   const [digitalMethod, setDigitalMethod] = useState<DigitalMethod | null>(null);
   const [fisicaMethod, setFisicaMethod] = useState<FisicaMethod | null>(null);
-// Dentro do componente EntregaForm
-  const router = useRouter();
-
-const handleContinue = () => {
-  if (!canContinue()) return;
-
-  const deliveryData = {
-    tipoEntrega,
-    selectedDate: selectedDate ? selectedDate.toISOString() : null, // salva como string ISO
-    digitalMethod,
-    fisicaMethod,
-  };
-
-  localStorage.setItem('deliverySelection', JSON.stringify(deliveryData));
-  router.push('/dados-entrega');
-};
-  const handleDigitalSelect = (value: DigitalMethod) => {
-    setDigitalMethod(value);
-  };
-
-  const handleFisicaSelect = (value: FisicaMethod) => {
-    setFisicaMethod(value);
   
-  };
+  const [cartItems, setCartItems] = useState<any[]>([]);
 
-  // ✅ Validação ajustada: só aceita "correios" como método físico válido
+  useEffect(() => {
+    const loadCart = () => {
+      const mensagemStr = localStorage.getItem('mimo_mensagem');
+      // Importante: Estas são as URLs que a tua API na VPS devolveu
+      const audioUrl = localStorage.getItem('mimo_final_audio'); 
+      const videoUrl = localStorage.getItem('mimo_final_video');
+
+      if (!mensagemStr) {
+        router.push('/home');
+        return;
+      }
+
+      try {
+        const mensagem = JSON.parse(mensagemStr);
+        setCartItems([{
+          id: 'mensagem-personalizada',
+          title: 'Carta Mimo',
+          price: mensagem.price || 79,
+          audioUrl, // Referência para o ficheiro na VPS
+          videoUrl  // Referência para o ficheiro na VPS
+        }]);
+      } catch (err) {
+        router.push('/home');
+      }
+    };
+
+    loadCart();
+  }, [router]);
+
   const canContinue = () => {
-
-    if (tipoEntrega === 'digital') {
-      return digitalMethod !== null;
-    }
-
-    if (tipoEntrega === 'fisica') {
-      return fisicaMethod !== null && VALID_FISICA_METHODS.includes(fisicaMethod);
-    }
-
-    if (tipoEntrega === 'ambos') {
-      const hasValidDigital = digitalMethod !== null;
-      const hasValidFisica = fisicaMethod !== null && VALID_FISICA_METHODS.includes(fisicaMethod);
-      return hasValidDigital && hasValidFisica;
-    }
-
+    if (!selectedDate) return false;
+    if (tipoEntrega === 'digital') return !!digitalMethod;
+    if (tipoEntrega === 'fisica') return !!fisicaMethod && VALID_FISICA_METHODS.includes(fisicaMethod);
+    if (tipoEntrega === 'ambos') return !!digitalMethod && !!fisicaMethod && VALID_FISICA_METHODS.includes(fisicaMethod);
     return false;
   };
 
-  // ✅ Verifica se um método físico está selecionado, mas não é válido
-  const hasInvalidFisicaSelection = fisicaMethod !== null && !VALID_FISICA_METHODS.includes(fisicaMethod);
+  const handleContinue = () => {
+    if (!canContinue()) return;
+
+    // Criamos o objeto que será enviado para o Firestore na próxima página
+    const deliverySelection = {
+      tipoEntrega,
+      dataEntrega: selectedDate?.toISOString(),
+      metodoDigital: digitalMethod,
+      metodoFisico: fisicaMethod,
+      // Incluímos as referências dos ficheiros que estão na VPS
+      arquivos: {
+        audio: localStorage.getItem('mimo_final_audio'),
+        video: localStorage.getItem('mimo_final_video')
+      }
+    };
+
+    localStorage.setItem('deliverySelection', JSON.stringify(deliverySelection));
+    router.push('/dados-entrega');
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-md space-y-6 max-w-xl mx-auto p-6 border border-gray-100">
+      
       <EntregaTypeSection tipoEntrega={tipoEntrega} setTipoEntrega={setTipoEntrega} />
+      
       <DeliveryCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
 
       {(tipoEntrega === 'digital' || tipoEntrega === 'ambos') && (
         <DeliveryMethodSection<DigitalMethod>
-          title="Entregas Digitais"
+          title="Método Digital"
           options={[
             { id: 'whatsapp', label: 'WhatsApp' },
             { id: 'email', label: 'E-mail' },
           ]}
           selected={digitalMethod}
-          onSelect={handleDigitalSelect}
+          onSelect={setDigitalMethod}
         />
       )}
 
       {(tipoEntrega === 'fisica' || tipoEntrega === 'ambos') && (
         <DeliveryMethodSection<FisicaMethod>
-          title="Entregas Físicas"
+          title="Método Físico"
           options={[
             { id: 'correios', label: 'Correios' },
-            { id: 'local', label: 'Ponto de Recolha' },
+            { id: 'local', label: 'Levantamento Local' },
           ]}
           selected={fisicaMethod}
-          onSelect={handleFisicaSelect}
+          onSelect={setFisicaMethod}
         />
       )}
 
-      {/* Aviso sutil se método físico não suportado for escolhido */}
-      {hasInvalidFisicaSelection && (
-        <p className="text-sm text-amber-700 bg-amber-50 p-2 rounded-md border border-amber-200">
-          Apenas <strong>Correios</strong> está disponível no momento para entregas físicas.
+      {/* Alerta de restrição de método */}
+      {fisicaMethod === 'local' && (
+        <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
+          Atualmente apenas os <strong>Correios</strong> estão disponíveis.
         </p>
       )}
 
-      <div className="space-y-3">
-          <button className="w-full flex items-center justify-center gap-3 p-3 border border-green-600 text-green-600 rounded-full hover:bg-green-50 font-medium transition">
-            <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
-            Finalizar via WhatsApp
-          </button>
+      <div className="pt-4 space-y-3">
         <button
           type="button"
-          onClick={handleContinue} 
+          onClick={handleContinue}
           disabled={!canContinue()}
-          className="w-full flex items-center justify-center gap-2 font-semibold p-3 bg-red-900 text-white rounded-full hover:bg-red-800 transition disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+          className="w-full py-3 bg-red-900 text-white rounded-full font-bold hover:bg-red-800 transition disabled:bg-gray-200 disabled:text-gray-400"
         >
           Continuar
         </button>
+        
         <button
-          type="button"
-          className="w-full flex items-center justify-center gap-2 font-semibold p-3 border border-red-900 text-red-900 rounded-full hover:bg-red-50 transition"
+          onClick={() => router.back()}
+          className="w-full py-2 text-gray-400 text-sm hover:underline"
         >
-          Cancelar
+          Voltar e alterar mídia
         </button>
       </div>
     </div>

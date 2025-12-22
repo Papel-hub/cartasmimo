@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import { db } from '../../lib/firebaseConfig'; 
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 import React from 'react';
 import Link from 'next/link';
@@ -13,10 +15,9 @@ import Image from 'next/image';
 import PaymentMethodSelector from './components/PaymentMethodSelector';
 import PixPaymentSection from './components/PixPaymentSection';
 import CreditCardPaymentSection from './components/CreditCardPaymentSection';
-import MimoCardSection from './components/MimoCardSection';
 import BoletoPaymentSection from './components/BoletoPaymentSection';
 
-type PaymentMethod = 'pix' | 'cartaomimo' | 'cartao' | 'boleto' | '';
+type PaymentMethod = 'pix' | 'cartao' | 'boleto' | '';
 
 interface PaymentResponse {
   success: boolean;
@@ -114,61 +115,152 @@ const handleBoletoPayment = async (boletoData: {
     setLoading(false);
   }
 };
+const saveOrderToFirestore = async (paymentData: any) => {
+  try {
+    const deliveryStr = localStorage.getItem('fullDeliveryData');
+    const mensagemStr = localStorage.getItem('mimo_mensagem');
+    
+    const delivery = deliveryStr ? JSON.parse(deliveryStr) : {};
+    const mensagem = mensagemStr ? JSON.parse(mensagemStr) : {};
 
-  const handlePayment = async (method: 'pix' | 'boleto') => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: cartTotal,
-          email,
-          description: 'Pagamento Mimo',
-          method: method === 'pix' ? 'pix' : 'boleto',
-        }),
-      });
+    const docRef = await addDoc(collection(db, "pedidos"), {
+      // 1. Identificação Básica
+      cliente_email: email || delivery.email || "Não informado",
+      status: "pendente",
+      valor_total: cartTotal,
+      metodo_pagamento: metodo,
+      
+      // 2. A CARTA (O que você escreveu na /home)
+      carta: {
+        de: mensagem.from, // Aqui já vem "Anônimo" se o usuário marcou o checkbox
+        para: mensagem.to,
+        mensagem: mensagem.message,
+        formato_slug: mensagem.format,
+        data_escolhida: delivery.selectedDate // Data que ele escolheu no calendário
+      },
 
-      const data: PaymentResponse = await res.json();
+      // 3. LOGÍSTICA (Onde e como entregar)
+      entrega: {
+        tipo: delivery.tipoEntrega, // digital, fisica ou ambos
+        metodo_digital: delivery.digitalMethod, // whatsapp ou email
+        metodo_fisico: delivery.fisicaMethod, // correios ou local
+        endereco_completo: delivery.endereco,
+        cpe: delivery.cpe,
+        whatsapp_contato: delivery.whatsapp
+      },
 
-      if (!res.ok || !data.success) throw new Error(data.error || 'Erro ao gerar pagamento');
+      // 4. ARQUIVOS NA VPS
+      arquivos_vps: {
+        audio_url: localStorage.getItem('mimo_final_audio') || null,
+        video_url: localStorage.getItem('mimo_final_video') || null
+      },
 
-      if (method === 'pix' && data.data?.qr_code && data.data.qr_code_base64) {
-        setQrCode(`data:image/png;base64,${data.data.qr_code_base64}`);
-        setPixKey(data.data.qr_code);
-      }
+      // 5. RASTREIO E TEMPO
+      criado_em: serverTimestamp(),
+      payment_id: paymentData?.id || null, // ID do Mercado Pago para o Webhook achar
+      payment_status: paymentData?.status || "pending"
+    });
 
-      if (method === 'boleto' && data.data?.boleto_url) {
-        setBoletoUrl(data.data.boleto_url);
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Não foi possível gerar o pagamento. Tente novamente.');
-    } finally {
-      setLoading(false);
+    console.log("✅ Pedido registrado no Firestore com ID:", docRef.id);
+    return docRef.id;
+  } catch (e) {
+    console.error("❌ Erro crítico ao salvar pedido:", e);
+    alert("Erro ao registrar pedido. Por favor, tire um print desta tela e nos chame no WhatsApp.");
+  }
+};
+const handlePayment = async (method: 'pix' | 'boleto') => {
+  if (!email) {
+    alert("Por favor, preencha o e-mail para continuar.");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const res = await fetch('/api/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: cartTotal,
+        email,
+        description: 'Mimo Personalizado - Pedido',
+        method: method,
+      }),
+    });
+
+    const data: PaymentResponse = await res.json();
+
+    if (!res.ok || !data.success) throw new Error(data.error || 'Erro no pagamento');
+
+    // ✅ SUCESSO NO PAGAMENTO -> SALVAR NO FIREBASE
+    await saveOrderToFirestore(data.data);
+
+    if (method === 'pix' && data.data?.qr_code) {
+      setQrCode(`data:image/png;base64,${data.data.qr_code_base64}`);
+      setPixKey(data.data.qr_code);
     }
-  };
 
-  // =========================
-  // WHATSAPP
-  // =========================
-  const title = cartItems[0]?.title ?? 'N/A';
-  const format = cartItems[0]?.format ?? 'Digital';
+    if (method === 'boleto' && data.data?.boleto_url) {
+      setBoletoUrl(data.data.boleto_url);
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Erro ao processar. Verifique os dados e tente novamente.');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const whatsappMessage = `
-Olá! Quero finalizar meu pagamento.
+const handleWhatsAppFinalization = async () => {
+  const deliveryStr = localStorage.getItem('fullDeliveryData');
+  const delivery = deliveryStr ? JSON.parse(deliveryStr) : {};
+  
+  const title = cartItems[0]?.title ?? 'Carta Mimo';
+  const total = cartTotal;
+  const pedidoId = `WPP-${crypto.randomUUID().split('-')[0].toUpperCase()}`; // Ex: WPP-A1B2C3
 
-Titulo: ${title}
-Formato: ${format}
-Valor total: R$ ${cartTotal.toFixed(2).replace('.', ',')}
+  try {
+    // 1. SALVAR NO FIREBASE
+    await addDoc(collection(db, "pedidos"), {
+      pedidoId,
+      status: "finalizado_whatsapp",
+      data: new Date().toISOString(),
+      cliente: {
+        email: delivery.email || 'Via WhatsApp',
+        nome: delivery.nome || 'Não informado',
+      },
+      itens: cartItems,
+      total: total,
+      entrega: delivery,
+      origem: "whatsapp"
+    });
 
-Pode me orientar?
-`;
+    // 2. MONTAR A MENSAGEM DO WHATSAPP
+    const text = `*Pedido: ${pedidoId}* 
+*Status: Aguardando Pagamento*
+----------------------------------
+*Produto:* ${title}
+*Total:* R$ ${total.toFixed(2).replace('.', ',')}
 
-  const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    whatsappMessage
-  )}`;
+*DETALHES DA ENTREGA:*
+*Tipo:* ${delivery.tipoEntrega}
+*Data Prevista:* ${delivery.selectedDate || 'A definir'}
+*Destinatário:* ${delivery.destinatario || 'Não informado'}
 
+*MÉTODOS:*
+${delivery.digitalMethod ? `• Digital: ${delivery.digitalMethod}` : ''}
+${delivery.fisicaMethod ? `• Físico: ${delivery.fisicaMethod}` : ''}
+----------------------------------
+Olá! Acabei de gerar meu pedido *${pedidoId}* no site e gostaria de finalizar o pagamento por aqui.`;
+
+    // 3. ABRIR O WHATSAPP
+    const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+    window.open(whatsappLink, '_blank');
+
+  } catch (error) {
+    console.error("Erro ao salvar pedido via WhatsApp:", error);
+    alert("Houve um erro ao registrar seu pedido. Tente novamente.");
+  }
+};
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
@@ -178,7 +270,7 @@ Pode me orientar?
 
         {/* Título */}
         <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-          Padamento
+          Pagamento
         </h1>
         <p className="text-sm text-gray-600 text-center mb-8">
           Escolha o seu tipo de pagamento
@@ -210,8 +302,6 @@ Pode me orientar?
 
           {metodo === 'cartao' && <CreditCardPaymentSection cartTotal={cartTotal} />}
 
-          {metodo === 'cartaomimo' && <MimoCardSection cartTotal={cartTotal} />}
-
           {metodo === 'boleto' && (
             <BoletoPaymentSection
               email={email}
@@ -240,13 +330,13 @@ Pode me orientar?
       
                 {/* Alternativas de pagamento */}
                 <div className="space-y-3">
-          <button
-            onClick={() => window.open(whatsappLink, '_blank')}
-            className="w-full flex items-center justify-center gap-3 p-3 border border-green-600 text-green-600 rounded-full hover:bg-green-50 font-medium transition"
-          >
-            <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
-            Finalizar via WhatsApp
-          </button>
+<button
+  onClick={handleWhatsAppFinalization}
+  className="w-full flex items-center justify-center gap-3 p-3 border-2 border-green-500 text-green-700 rounded-full hover:bg-green-50 font-semibold transition-all active:scale-95 shadow-sm"
+>
+  <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
+  Finalizar via WhatsApp
+</button>
                 </div>
         </div>
       </main>
