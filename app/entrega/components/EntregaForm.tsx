@@ -1,32 +1,40 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+
 import EntregaTypeSection from './EntregaTypeSection';
 import DeliveryCalendar from './DeliveryCalendar';
 import DeliveryMethodSection from './DeliveryMethodSection';
-import { useRouter } from 'next/navigation';
 
 type DigitalMethod = 'whatsapp' | 'email';
 type FisicaMethod = 'correios' | 'local';
+
+type CartItem = {
+  id: string;
+  title: string;
+  price: number;
+  audioUrl: string | null;
+  videoUrl: string | null;
+};
 
 const VALID_FISICA_METHODS: FisicaMethod[] = ['correios'];
 
 export default function EntregaForm() {
   const router = useRouter();
-  
-  const [tipoEntrega, setTipoEntrega] = useState<'digital' | 'fisica' | 'ambos'>('digital');
+
+  const [tipoEntrega, setTipoEntrega] =
+    useState<'digital' | 'fisica' | 'ambos'>('digital');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [digitalMethod, setDigitalMethod] = useState<DigitalMethod | null>(null);
   const [fisicaMethod, setFisicaMethod] = useState<FisicaMethod | null>(null);
-  
-  const [cartItems, setCartItems] = useState<any[]>([]);
+
+  const [, setCartItems] = useState<CartItem[]>([]);
 
   useEffect(() => {
     const loadCart = () => {
       const mensagemStr = localStorage.getItem('mimo_mensagem');
-      // Importante: Estas são as URLs que a tua API na VPS devolveu
-      const audioUrl = localStorage.getItem('mimo_final_audio'); 
+      const audioUrl = localStorage.getItem('mimo_final_audio');
       const videoUrl = localStorage.getItem('mimo_final_video');
 
       if (!mensagemStr) {
@@ -35,15 +43,18 @@ export default function EntregaForm() {
       }
 
       try {
-        const mensagem = JSON.parse(mensagemStr);
-        setCartItems([{
-          id: 'mensagem-personalizada',
-          title: 'Carta Mimo',
-          price: mensagem.price || 79,
-          audioUrl, // Referência para o ficheiro na VPS
-          videoUrl  // Referência para o ficheiro na VPS
-        }]);
-      } catch (err) {
+        const mensagem = JSON.parse(mensagemStr) as { price?: number };
+
+        setCartItems([
+          {
+            id: 'mensagem-personalizada',
+            title: 'Carta Mimo',
+            price: mensagem.price ?? 79,
+            audioUrl,
+            videoUrl,
+          },
+        ]);
+      } catch {
         router.push('/home');
       }
     };
@@ -51,40 +62,64 @@ export default function EntregaForm() {
     loadCart();
   }, [router]);
 
-  const canContinue = () => {
+  const canContinue = (): boolean => {
     if (!selectedDate) return false;
-    if (tipoEntrega === 'digital') return !!digitalMethod;
-    if (tipoEntrega === 'fisica') return !!fisicaMethod && VALID_FISICA_METHODS.includes(fisicaMethod);
-    if (tipoEntrega === 'ambos') return !!digitalMethod && !!fisicaMethod && VALID_FISICA_METHODS.includes(fisicaMethod);
+
+    if (tipoEntrega === 'digital') {
+      return digitalMethod !== null;
+    }
+
+    if (tipoEntrega === 'fisica') {
+      return (
+        fisicaMethod !== null &&
+        VALID_FISICA_METHODS.includes(fisicaMethod)
+      );
+    }
+
+    if (tipoEntrega === 'ambos') {
+      return (
+        digitalMethod !== null &&
+        fisicaMethod !== null &&
+        VALID_FISICA_METHODS.includes(fisicaMethod)
+      );
+    }
+
     return false;
   };
 
   const handleContinue = () => {
     if (!canContinue()) return;
 
-    // Criamos o objeto que será enviado para o Firestore na próxima página
     const deliverySelection = {
       tipoEntrega,
-      dataEntrega: selectedDate?.toISOString(),
+      dataEntrega: selectedDate?.toISOString() ?? null,
       metodoDigital: digitalMethod,
       metodoFisico: fisicaMethod,
-      // Incluímos as referências dos ficheiros que estão na VPS
       arquivos: {
         audio: localStorage.getItem('mimo_final_audio'),
-        video: localStorage.getItem('mimo_final_video')
-      }
+        video: localStorage.getItem('mimo_final_video'),
+      },
     };
 
-    localStorage.setItem('deliverySelection', JSON.stringify(deliverySelection));
+    localStorage.setItem(
+      'deliverySelection',
+      JSON.stringify(deliverySelection)
+    );
+
     router.push('/dados-entrega');
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-md space-y-6 max-w-xl mx-auto p-6 border border-gray-100">
-      
-      <EntregaTypeSection tipoEntrega={tipoEntrega} setTipoEntrega={setTipoEntrega} />
-      
-      <DeliveryCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+      <EntregaTypeSection
+        tipoEntrega={tipoEntrega}
+        setTipoEntrega={setTipoEntrega}
+      />
+
+      <DeliveryCalendar
+        selectedDate={selectedDate}
+        onDateSelect={setSelectedDate}
+      />
 
       {(tipoEntrega === 'digital' || tipoEntrega === 'ambos') && (
         <DeliveryMethodSection<DigitalMethod>
@@ -110,7 +145,6 @@ export default function EntregaForm() {
         />
       )}
 
-      {/* Alerta de restrição de método */}
       {fisicaMethod === 'local' && (
         <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
           Atualmente apenas os <strong>Correios</strong> estão disponíveis.
@@ -126,7 +160,7 @@ export default function EntregaForm() {
         >
           Continuar
         </button>
-        
+
         <button
           onClick={() => router.back()}
           className="w-full py-2 text-gray-400 text-sm hover:underline"

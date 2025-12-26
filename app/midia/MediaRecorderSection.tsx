@@ -76,7 +76,7 @@ export default function MediaRecorderSection({
           return prev + 1;
         });
       }, 1000);
-    } catch (err) {
+    } catch {
       alert('Erro ao acessar dispositivos de mídia.');
     }
   };

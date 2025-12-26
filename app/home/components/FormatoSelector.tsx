@@ -1,13 +1,17 @@
 'use client';
 
 import React from 'react';
-import { 
-  DevicePhoneMobileIcon, 
-  EnvelopeIcon, 
-  SpeakerWaveIcon, 
-  VideoCameraIcon, 
-  SparklesIcon 
+import {
+  DevicePhoneMobileIcon,
+  EnvelopeIcon,
+  SpeakerWaveIcon,
+  VideoCameraIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
+
+/* =========================
+   TIPOS
+========================= */
 
 export type FormatoTipo =
   | 'digital'
@@ -17,43 +21,84 @@ export type FormatoTipo =
   | 'digital_fisico_audio'
   | 'full_premium';
 
-const FORMAT_INFO: Record<FormatoTipo, { label: string; icon: any; description: string }> = {
-  digital: { label: 'Cartão Digital', icon: DevicePhoneMobileIcon, description: 'Entrega rápida por E-mail ou Whats' },
-  fisico: { label: 'Cartão Físico', icon: EnvelopeIcon, description: 'Papel especial e entrega via Correios' },
-  digital_audio: { label: 'Digital + Áudio', icon: SpeakerWaveIcon, description: 'Sua voz gravada na mensagem' },
-  digital_video: { label: 'Digital + Vídeo', icon: VideoCameraIcon, description: 'Um vídeo especial para emocionar' },
-  digital_fisico_audio: { label: 'Digital e Físico + Áudio', icon: SparklesIcon, description: 'O melhor dos dois mundos + Áudio' },
-  full_premium: { 
-    label: 'Experiência Full Premium', 
-    icon: SparklesIcon, 
-    description: 'Físico, Digital, Áudio e Vídeo (Completo)' 
+type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
+
+type FormatoInfo = {
+  label: string;
+  icon: IconType;
+  description: string;
+};
+
+/* =========================
+   CONFIGURAÇÃO
+========================= */
+
+const FORMAT_INFO: Record<FormatoTipo, FormatoInfo> = {
+  digital: {
+    label: 'Cartão Digital',
+    icon: DevicePhoneMobileIcon,
+    description: 'Entrega rápida por E-mail ou Whats',
+  },
+  fisico: {
+    label: 'Cartão Físico',
+    icon: EnvelopeIcon,
+    description: 'Papel especial e entrega via Correios',
+  },
+  digital_audio: {
+    label: 'Digital + Áudio',
+    icon: SpeakerWaveIcon,
+    description: 'Sua voz gravada na mensagem',
+  },
+  digital_video: {
+    label: 'Digital + Vídeo',
+    icon: VideoCameraIcon,
+    description: 'Um vídeo especial para emocionar',
+  },
+  digital_fisico_audio: {
+    label: 'Digital e Físico + Áudio',
+    icon: SparklesIcon,
+    description: 'O melhor dos dois mundos + Áudio',
+  },
+  full_premium: {
+    label: 'Experiência Full Premium',
+    icon: SparklesIcon,
+    description: 'Físico, Digital, Áudio e Vídeo (Completo)',
   },
 };
+
+/* =========================
+   PROPS
+========================= */
 
 type FormatoSelectorProps = {
   selectedFormat: FormatoTipo;
   onSelectFormat: (format: FormatoTipo) => void;
-  prices: Record<FormatoTipo, number>; // Recebe os preços da HomePage
+  prices: Record<FormatoTipo, number>;
 };
+
+/* =========================
+   COMPONENTE
+========================= */
 
 export default function FormatoSelector({
   selectedFormat,
   onSelectFormat,
-  prices, // Agora usamos a prop diretamente
+  prices,
 }: FormatoSelectorProps) {
-  
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
-        <span className="w-8 h-px bg-gray-200"></span>
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Escolha o Formato</h2>
+        <span className="w-8 h-px bg-gray-200" />
+        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          Escolha o Formato
+        </h2>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
         {(Object.keys(FORMAT_INFO) as FormatoTipo[]).map((key) => {
-          const Icon = FORMAT_INFO[key].icon;
+          const { icon: Icon, label } = FORMAT_INFO[key];
           const isSelected = selectedFormat === key;
-          const preco = prices[key] || 0;
+          const preco = prices[key] ?? 0;
 
           return (
             <label
@@ -71,33 +116,60 @@ export default function FormatoSelector({
                 onChange={() => onSelectFormat(key)}
                 className="sr-only"
               />
-              
+
               <div className="flex items-center gap-4">
-                <div className={`p-2 rounded-xl transition-colors ${
-                  isSelected ? 'bg-red-900 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'
-                }`}>
+                <div
+                  className={`p-2 rounded-xl transition-colors ${
+                    isSelected
+                      ? 'bg-red-900 text-white'
+                      : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'
+                  }`}
+                >
                   <Icon className="w-5 h-5" />
                 </div>
+
                 <div>
-                  <p className={`font-bold text-sm ${isSelected ? 'text-red-950' : 'text-gray-700'}`}>
-                    {FORMAT_INFO[key].label}
+                  <p
+                    className={`font-bold text-sm ${
+                      isSelected ? 'text-red-950' : 'text-gray-700'
+                    }`}
+                  >
+                    {label}
                   </p>
                   <p className="text-[11px] text-gray-400">
-                    {key.includes('audio') || key.includes('video') || key === 'full_premium' 
-                      ? 'Inclui mídia personalizada' 
+                    {key.includes('audio') ||
+                    key.includes('video') ||
+                    key === 'full_premium'
+                      ? 'Inclui mídia personalizada'
                       : 'Apenas mensagem'}
                   </p>
                 </div>
               </div>
 
-              <div className={`font-semibold text-sm ${isSelected ? 'text-red-900' : 'text-gray-900'}`}>
-                {preco === 0 ? 'Grátis' : `R$ ${preco.toFixed(2).replace('.', ',')}`}
+              <div
+                className={`font-semibold text-sm ${
+                  isSelected ? 'text-red-900' : 'text-gray-900'
+                }`}
+              >
+                {preco === 0
+                  ? 'Grátis'
+                  : `R$ ${preco.toFixed(2).replace('.', ',')}`}
               </div>
 
               {isSelected && (
                 <div className="absolute -top-2 -right-2 bg-red-900 text-white rounded-full p-1 shadow-lg animate-in zoom-in">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 </div>
               )}

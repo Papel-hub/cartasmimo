@@ -95,7 +95,7 @@ const handleContinue = async () => {
     } else {
       throw new Error(result.error);
     }
-  } catch (err) {
+  } catch {
     alert('Erro ao enviar arquivos para o servidor Hostinger.');
   } finally {
     setIsUploading(false);

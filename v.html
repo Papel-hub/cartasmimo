@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mimo - Sua Carta Especial</title>
+    <style>
+        :root {
+            --cor-capa: #8b0000; /* Vinho/Vermelho Mimo */
+            --cor-papel: #fdfcf0;
+            --texto: #333;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            font-family: 'Georgia', serif;
+        }
+
+        /* Container do Livro */
+        .book {
+            width: 350px;
+            height: 500px;
+            position: relative;
+            perspective: 1500px;
+            cursor: pointer;
+        }
+
+        /* Estilo comum para as páginas */
+        .page {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: left;
+            transition: transform 1.5s cubic-bezier(0.645, 0.045, 0.355, 1);
+            transform-style: preserve-3d;
+            border-radius: 5px 15px 15px 5px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        /* Capa Frontal */
+        .front {
+            background-color: var(--cor-capa);
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: gold;
+            text-align: center;
+            padding: 20px;
+            backface-visibility: hidden;
+        }
+
+        .front h1 { font-size: 24px; margin-bottom: 10px; }
+        .front p { font-style: italic; opacity: 0.8; }
+
+        /* Interior da Carta (Conteúdo) */
+        .content {
+            background-color: var(--cor-papel);
+            z-index: 1;
+            padding: 40px;
+            box-sizing: border-box;
+            color: var(--texto);
+            overflow-y: auto;
+        }
+
+        /* Classe de Abertura (Ativada via JS) */
+        .book.open .front {
+            transform: rotateY(-160deg);
+        }
+
+        /* Mídias (Escondidas inicialmente) */
+        .medias {
+            margin-top: 30px;
+            opacity: 0;
+            transition: opacity 1s ease 1s;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .book.open .medias { opacity: 1; }
+
+        .btn-media {
+            padding: 10px;
+            background: #eee;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            text-decoration: none;
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="book" id="mimoBook" onclick="abrirLivro()">
+    <div class="page front">
+        <div style="border: 2px solid gold; padding: 20px;">
+            <h1>Mimo</h1>
+            <p>Para alguém especial</p>
+            <small>Clique para abrir</small>
+        </div>
+    </div>
+
+    <div class="page content">
+        <h3>Querido(a) [Nome],</h3>
+        <p>Aqui entra o texto inicial que você vai me enviar...</p>
+        <p>Palavras dizem, atitudes provam. Este é o seu gesto de carinho.</p>
+
+        <div class="medias">
+            <hr>
+            <a href="#" class="btn-media">▶ Assistir Vídeo Incluído</a>
+            <a href="#" class="btn-media">🎧 Ouvir Áudio Incluído</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function abrirLivro() {
+        document.getElementById('mimoBook').classList.toggle('open');
+    }
+</script>
+
+</body>
+</html>

@@ -1,52 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { existsSync } from 'fs';
+import path from 'path';
 
-export async function POST(req: NextRequest) {
+/* =========================
+   CONSTANTES
+========================= */
+
+const UPLOAD_DIR = '/var/www/uploads';
+const PUBLIC_BASE_URL = 'https://cartasdamimo.com/uploads';
+
+/* =========================
+   HANDLER
+========================= */
+
+export async function POST(request: NextRequest) {
   try {
-    const formData = await req.formData();
-    const audioFile = formData.get('audio') as File | null;
-    const videoFile = formData.get('video') as File | null;
+    const formData = await request.formData();
+    const file = formData.get('file');
 
-    // Caminho onde os arquivos serão salvos na sua VPS
-    // Usando 'public/uploads' para facilitar o acesso via URL
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-
-    // Cria a pasta se ela não existir
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
+    if (!(file instanceof Blob)) {
+      return NextResponse.json(
+        { error: 'Arquivo não encontrado ou inválido' },
+        { status: 400 }
+      );
     }
 
-    const savedFiles: { audioPath?: string; videoPath?: string } = {};
+    /* =========================
+       CONVERSÃO PARA BUFFER
+    ========================== */
 
-    // Processar Áudio
-    if (audioFile) {
-      const bytes = await audioFile.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const fileName = `audio_${Date.now()}.webm`;
-      const path = join(uploadDir, fileName);
-      await writeFile(path, buffer);
-      savedFiles.audioPath = `/uploads/${fileName}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    /* =========================
+       GARANTE DIRETÓRIO
+    ========================== */
+
+    if (!existsSync(UPLOAD_DIR)) {
+      await mkdir(UPLOAD_DIR, { recursive: true });
     }
 
-    // Processar Vídeo
-    if (videoFile) {
-      const bytes = await videoFile.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const fileName = `video_${Date.now()}.webm`;
-      const path = join(uploadDir, fileName);
-      await writeFile(path, buffer);
-      savedFiles.videoPath = `/uploads/${fileName}`;
-    }
+    /* =========================
+       NOME DO FICHEIRO
+    ========================== */
 
-    return NextResponse.json({ 
-      success: true, 
-      ...savedFiles 
+    const extension =
+      file.type?.split('/')[1] && file.type !== 'application/octet-stream'
+        ? file.type.split('/')[1]
+        : 'webm';
+
+    const fileName = `mimo-${Date.now()}-${crypto
+      .randomUUID()
+      .slice(0, 8)}.${extension}`;
+
+    const filePath = path.join(UPLOAD_DIR, fileName);
+
+    /* =========================
+       ESCRITA NO DISCO
+    ========================== */
+
+    await writeFile(filePath, buffer);
+
+    /* =========================
+       RESPOSTA
+    ========================== */
+
+    return NextResponse.json({
+      url: `${PUBLIC_BASE_URL}/${fileName}`,
     });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Erro desconhecido';
 
-  } catch (error) {
-    console.error('Erro no upload na VPS:', error);
-    return NextResponse.json({ error: 'Erro ao salvar arquivo no servidor' }, { status: 500 });
+    console.error('Erro no upload:', message);
+
+    return NextResponse.json(
+      { error: 'Falha ao salvar o arquivo' },
+      { status: 500 }
+    );
   }
 }
