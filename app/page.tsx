@@ -27,6 +27,10 @@ export default function WelcomePage() {
     {
       title: "Regras de Vendas e Entregas",
       file: "/docs/regras-entregas.pdf",
+    },    
+    {
+      title: "Direitos de Texto, Imagem, Audio e Video",
+      file: "/docs/direitos.pdf",
     },
   ];
 

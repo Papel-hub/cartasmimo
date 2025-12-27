@@ -8,7 +8,7 @@ import {
   FaVolumeUp,
   FaInfoCircle,
   FaTimes,
-  FaArrowLeft,
+  FaUndo,
 } from 'react-icons/fa';
 import Image from 'next/image';
 
@@ -156,10 +156,10 @@ export default function PresenteCliente({ params }: PageProps) {
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
                 <p className="text-stone-800 font-serif italic text-sm mb-4">Esperamos que tenha gostado!</p>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); setStep(0); }}
-                  className="bg-stone-900/5 hover:bg-stone-900/10 px-4 py-2 rounded-full text-[10px] font-bold tracking-widest flex items-center gap-2 transition-all"
+                  onClick={() => setStep(0)}
+                  className="flex items-center gap-3 mx-auto bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-black tracking-widest active:scale-95 transition-all hover:bg-red-900 shadow-lg"
                 >
-                  <FaArrowLeft /> VOLTAR AO INÍCIO
+                  <FaUndo size={12} /> REVER DO INÍCIO
                 </button>
             </div>
           </div>
@@ -202,19 +202,16 @@ export default function PresenteCliente({ params }: PageProps) {
 
             <div className="relative p-8 sm:p-10 h-full">
                {/* Posicionamento preciso para o layout da imagem */}
-               <div className="absolute top-[48.5%] left-[23%] w-[45%] text-[11px] sm:text-[13px] font-bold text-stone-800 truncate">
+               <div className="absolute top-[49.5%] left-[25%] w-[45%] text-[11px] sm:text-[13px] font-bold text-stone-800 truncate">
                  {pedido.conteudo?.de}
                </div>
-               <div className="absolute top-[53.5%] left-[26%] w-[45%] text-[11px] sm:text-[13px] font-bold text-stone-800 truncate">
+               <div className="absolute top-[54.5%] left-[29%] w-[45%] text-[11px] sm:text-[13px] font-bold text-stone-800 truncate">
                  {pedido.conteudo?.para}
                </div>
-               <div className="absolute top-[63%] left-[18%] w-[50%] text-[10px] sm:text-[12px] text-stone-700 font-serif italic leading-relaxed max-h-[140px] overflow-y-auto pr-2 custom-scrollbar">
+               <div className="absolute top-[63%] left-[20%] w-[50%] text-[10px] sm:text-[12px] text-stone-700 font-serif italic leading-relaxed max-h-[140px] overflow-y-auto pr-2 custom-scrollbar">
                   {pedido.conteudo?.texto}
                </div>
-               
-               <p className="absolute bottom-8 left-0 w-full text-center text-[8px] font-black uppercase tracking-[0.2em] text-stone-400 opacity-60">
-                 Vire para ver a surpresa
-               </p>
+              
             </div>
           </div>
         </div>
@@ -253,7 +250,7 @@ export default function PresenteCliente({ params }: PageProps) {
                   className="w-full h-12 accent-red-600" 
                   autoPlay 
                 />
-                <p className="mt-6 text-stone-500 text-[10px] font-bold uppercase tracking-[0.3em]">Mensagem Sonora</p>
+                <p className="mt-6 text-stone-500 text-[10px] font-bold uppercase tracking-[0.3em]">Mensagem em áudio</p>
               </div>
             )}
           </div>

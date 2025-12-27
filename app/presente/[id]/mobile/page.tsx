@@ -97,10 +97,8 @@ export default function PresenteCliente({ params }: PageProps) {
           <Image src="/images/carta4.svg" alt="Fim" fill className="object-cover" />
           <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/5">
              <div className="bg-white/90 backdrop-blur-lg p-8 rounded-3xl border border-stone-100 shadow-2xl">
-                <p className="text-stone-800 font-serif italic text-lg mb-6 leading-relaxed">
-                  Esperamos que este mimo tenha iluminado o seu dia!
-                </p>
-                <button 
+                <p className="text-stone-800 font-serif italic text-sm mb-4">Esperamos que tenha gostado!</p>
+                 <button 
                   onClick={() => setStep(0)}
                   className="flex items-center gap-3 mx-auto bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-black tracking-widest active:scale-95 transition-all hover:bg-red-900 shadow-lg"
                 >
@@ -246,13 +244,12 @@ export default function PresenteCliente({ params }: PageProps) {
         </div>
       )}
 
-      {/* RODAPÉ INFORMATIVO */}
-      <footer className="mt-12 text-center px-8 max-w-sm">
-        <p className="text-[10px] text-stone-400 font-medium uppercase leading-relaxed tracking-wider opacity-60">
-          Presente digital exclusivo e temporário. <br/>
-          O acesso expira automaticamente em 24h por privacidade.
+      {/* RODAPÉ */}
+      <div className="mt-12 text-center px-8">
+        <p className="text-[9px] text-stone-500/40 uppercase leading-relaxed tracking-wider max-w-xs mx-auto">
+          Presente digital exclusivo. O conteúdo será <br/> desativado em breve por motivos de privacidade.
         </p>
-      </footer>
+      </div>
 
       {/* CSS Perspectiva para efeito 3D suave */}
       <style jsx>{`

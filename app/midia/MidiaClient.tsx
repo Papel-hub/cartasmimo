@@ -6,23 +6,38 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import MediaRecorderSection from './MediaRecorderSection';
 
-export default function MidiaClient({
-  searchParams,
-}: {
+/* =========================
+   TIPAGEM
+========================= */
+
+interface MidiaClientProps {
   searchParams: Promise<{ tipo?: string }>;
-}) {
+}
+
+interface UploadResponse {
+  success: boolean;
+  audioPath: string | null;
+  videoPath: string | null;
+  error?: string;
+}
+
+export default function MidiaClient({ searchParams }: MidiaClientProps) {
+  // Resolve os params usando o hook 'use' conforme padrão do Next.js 15
   const resolvedParams = use(searchParams);
   const tipo = resolvedParams.tipo;
 
   const router = useRouter();
+  
+  // Estados Tipados
   const [error, setError] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
 
-  // 1. Carrega mídias salvas anteriormente ao montar
+  // 1. Efeito para validação e carregamento inicial
   useEffect(() => {
-    if (tipo !== 'audio' && tipo !== 'video' && tipo !== 'both') {
+    const validTypes = ['audio', 'video', 'both'];
+    if (tipo && !validTypes.includes(tipo)) {
       setError('Tipo de mídia inválido.');
       return;
     }
@@ -34,7 +49,7 @@ export default function MidiaClient({
     if (savedVideo) setVideoUrl(savedVideo);
   }, [tipo]);
 
-  const handleAudioReady = (url: string | null) => {
+  const handleAudioReady = (url: string | null): void => {
     setAudioUrl(url);
     if (url) {
       localStorage.setItem('mimo_midia_audio', url);
@@ -43,7 +58,7 @@ export default function MidiaClient({
     }
   };
 
-  const handleVideoReady = (url: string | null) => {
+  const handleVideoReady = (url: string | null): void => {
     setVideoUrl(url);
     if (url) {
       localStorage.setItem('mimo_midia_video', url);
@@ -52,55 +67,70 @@ export default function MidiaClient({
     }
   };
 
-  // 2. Determina se o botão "Continuar" deve estar ativo
-  const isReadyToContinue = () => {
+  const isReadyToContinue = (): boolean => {
     if (tipo === 'both') return !!audioUrl && !!videoUrl;
     if (tipo === 'audio') return !!audioUrl;
     if (tipo === 'video') return !!videoUrl;
     return false;
   };
 
-const handleContinue = async () => {
-  if (!isReadyToContinue()) return;
+  /* =========================
+     LÓGICA DE UPLOAD
+  ========================= */
 
-  setIsUploading(true);
+  const handleContinue = async (): Promise<void> => {
+    if (!isReadyToContinue() || isUploading) return;
 
-  try {
-    const formData = new FormData();
+    setIsUploading(true);
 
-    // Converte as URLs temporárias em Blobs reais para envio
-    if (audioUrl) {
-      const audioBlob = await fetch(audioUrl).then(r => r.blob());
-      formData.append('audio', audioBlob, 'audio.webm');
+    try {
+      const formData = new FormData();
+
+      // Função auxiliar para converter blob URL em File/Blob real
+      const fetchBlob = async (url: string): Promise<Blob> => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Falha ao processar arquivo local.');
+        return await res.blob();
+      };
+
+      if (audioUrl && (tipo === 'audio' || tipo === 'both')) {
+        const audioBlob = await fetchBlob(audioUrl);
+        formData.append('audio', audioBlob, 'audio.webm');
+      }
+
+      if (videoUrl && (tipo === 'video' || tipo === 'both')) {
+        const videoBlob = await fetchBlob(videoUrl);
+        formData.append('video', videoBlob, 'video.webm');
+      }
+
+      const response = await fetch('/api/upload-midia', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result: UploadResponse = await response.json();
+
+      if (response.ok && result.success) {
+        // Armazena as URLs finais retornadas pelo servidor
+        if (result.audioPath) localStorage.setItem('mimo_final_audio', result.audioPath);
+        if (result.videoPath) localStorage.setItem('mimo_final_video', result.videoPath);
+        
+        router.push('/entrega');
+      } else {
+        throw new Error(result.error || 'Erro ao enviar arquivos.');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      console.error('Upload error:', message);
+      alert('Houve um problema: ' + message);
+    } finally {
+      setIsUploading(false);
     }
+  };
 
-    if (videoUrl) {
-      const videoBlob = await fetch(videoUrl).then(r => r.blob());
-      formData.append('video', videoBlob, 'video.webm');
-    }
-
-    const response = await fetch('/api/upload-midia', {
-      method: 'POST',
-      body: formData,
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      // Salva as URLs finais (do seu servidor) para a próxima página
-      if (result.audioPath) localStorage.setItem('mimo_final_audio', result.audioPath);
-      if (result.videoPath) localStorage.setItem('mimo_final_video', result.videoPath);
-      
-      router.push('/entrega');
-    } else {
-      throw new Error(result.error);
-    }
-  } catch {
-    alert('Erro ao enviar arquivos para o servidor Hostinger.');
-  } finally {
-    setIsUploading(false);
-  }
-};
+  /* =========================
+     RENDERIZAÇÃO
+  ========================= */
 
   if (error) {
     return (
@@ -122,7 +152,6 @@ const handleContinue = async () => {
       <main className="flex-grow sm:px-16 px-6 pt-28 pb-12">
         <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-sm border border-gray-100 p-8 space-y-8">
           
-          {/* Cabeçalho Dinâmico */}
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-extrabold text-gray-900">
               {tipo === 'both' ? 'Mensagem Completa' : 
@@ -159,29 +188,27 @@ const handleContinue = async () => {
             )}
           </div>
 
-          {/* Ação Final */}
           <div className="pt-6 border-t border-gray-50">
-
             <button
               onClick={handleContinue}
               disabled={!isReadyToContinue() || isUploading}
-              className={`w-full py-4 px-6 rounded-full font-bold transition-all transform active:scale-95 ${
-                            isReadyToContinue()
-                              ? 'bg-red-900 text-white hover:bg-red-800 shadow-xl shadow-red-100'
-                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          }`}
-              >
+              className={`w-full py-4 px-6 rounded-full font-bold transition-all transform active:scale-95 flex justify-center items-center ${
+                isReadyToContinue() && !isUploading
+                  ? 'bg-red-900 text-white hover:bg-red-800 shadow-xl shadow-red-100'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
               {isUploading ? (
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-r-transparent" />
-                  Enviando...
+                  Enviando mídias...
                 </div>
               ) : (
                 'Continuar para Entrega'
               )}
             </button>
             <p className="text-center text-xs text-gray-400 mt-4">
-              Ao continuar, suas mídias serão salvas temporariamente.
+              Ao continuar, suas mídias serão salvas permanentemente em nossos servidores.
             </p>
           </div>
         </div>
