@@ -33,17 +33,33 @@ export const metadata: Metadata = {
     canonical: siteUrl,
   },
   openGraph: {
-    title: "Mimo Meu e Seu | Presentes que criam memórias inesquecíveis",
+    // Título personalizado para a prévia do WhatsApp
+    title: "Você recebeu um carinho da Mimo. Clique para abrir.",
     description:
-      "Transforme seus gestos de carinho em lembranças inesquecíveis. Crie, compartilhe e celebre com o Mimo Meu e Seu.",
+      "Alguém preparou uma surpresa especial para você! Clique para visualizar seu presente no Mimo Meu e Seu.",
     url: siteUrl,
     siteName: "Mimo Meu e Seu",
     locale: "pt_BR",
     type: "website",
+    images: [
+          {
+            url: "/android-chrome-512x512.png", // ou o nome que sua imagem tiver
+            width: 512,
+            height: 512,
+            alt: "Um carinho da Mimo para você",
+          },
+        ],
   },
   robots: {
     index: true,
     follow: true,
+  },
+  // Opcional: Adiciona suporte ao card do Twitter/X
+  twitter: {
+    card: "summary_large_image",
+    title: "Você recebeu um carinho da Mimo.",
+    description: "Abra para ver a surpresa que preparamos para você.",
+    images: ["/android-chrome-512x512.png"],
   },
 };
 
@@ -75,9 +91,7 @@ export default function RootLayout({
         <meta name="color-scheme" content="light dark" />
       </head>
       <body className="font-sans antialiased bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
-
-            <div className="relative z-10">{children}</div>
-
+        <div className="relative z-10">{children}</div>
       </body>
     </html>
   );
