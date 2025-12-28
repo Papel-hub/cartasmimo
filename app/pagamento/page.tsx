@@ -17,7 +17,7 @@ import PixPaymentSection from './components/PixPaymentSection';
 import CreditCardPaymentSection from './components/CreditCardPaymentSection';
 import BoletoPaymentSection from './components/BoletoPaymentSection';
 
-// Types (Importadas do bloco acima)
+// Types
 import { 
   PaymentMethod, 
   DeliveryData, 
@@ -41,12 +41,23 @@ export default function PagamentoPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
 
-  // =========================
-  // CARREGAR DADOS DO CARRINHO
-  // =========================
+  // ==========================================
+  // 1. CARREGAR DADOS (CARRINHO + ENTREGA)
+  // ==========================================
   useEffect(() => {
+    // Busca dados de entrega para pré-preencher e-mail se existir
+    const deliveryStr = localStorage.getItem('fullDeliveryData');
+    if (deliveryStr) {
+      try {
+        const delivery = JSON.parse(deliveryStr);
+        if (delivery.email) setEmail(delivery.email);
+      } catch (err) {
+        console.error('Erro ao processar dados de entrega', err);
+      }
+    }
+
+    // Busca dados da mensagem/preço
     const mensagemStr = localStorage.getItem('mimo_mensagem');
-    
     if (!mensagemStr) {
       router.push('/home');
       return;
@@ -56,21 +67,26 @@ export default function PagamentoPage() {
       const mensagem: MensagemData = JSON.parse(mensagemStr);
       setCartTotal(Number(mensagem.price) || 79);
     } catch (err) {
-      console.error('Erro ao processar dados locais', err);
+      console.error('Erro ao processar mensagem', err);
       router.push('/home');
     }
   }, [router]);
 
-  // =========================
-  // SALVAMENTO NO FIREBASE
-  // =========================
+  // ==========================================
+  // 2. LOGICA DE SALVAMENTO NO FIREBASE
+  // ==========================================
   const saveOrderUniversal = useCallback(async (
     type: 'checkout' | 'whatsapp', 
     paymentData?: PaymentResponseData
   ): Promise<OrderSchema> => {
-    const delivery: DeliveryData = JSON.parse(localStorage.getItem('fullDeliveryData') || '{}');
-    const mensagem: MensagemData = JSON.parse(localStorage.getItem('mimo_mensagem') || '{}');
+    // Pegamos os dados crus do local storage
+    const deliveryRaw = localStorage.getItem('fullDeliveryData');
+    const mensagemRaw = localStorage.getItem('mimo_mensagem');
     
+    const delivery = deliveryRaw ? JSON.parse(deliveryRaw) : {};
+    const mensagem = mensagemRaw ? JSON.parse(mensagemRaw) : {};
+    
+    // Gerador de ID amigável
     const customId = type === 'whatsapp' 
       ? `WPP-${Math.random().toString(36).substring(2, 8).toUpperCase()}` 
       : `SITE-${Date.now().toString().slice(-6)}`;
@@ -78,18 +94,20 @@ export default function PagamentoPage() {
     const orderData: OrderSchema = {
       pedidoId: customId,
       origem: type,
-      status: type === 'whatsapp' ? "finalizado_whatsapp" : "pendente",
+      status: type === 'whatsapp' ? "finalizado_whatsapp" : "pendente_pagamento",
       cliente: {
+        // O e-mail do estado 'email' é o mais atualizado (digitado no checkout)
         email: email || delivery.email || "Não informado",
-        nome: delivery.nome || "Não informado",
+        nome: delivery.destinatario || "Não informado",
         whatsapp: delivery.whatsapp || "Não informado"
       },
       conteudo: {
         de: mensagem.from || "Anônimo",
-        para: mensagem.to || delivery.destinatario || "Não informado",
+        para: delivery.destinatario || "Não informado",
         texto: mensagem.message || "Sem mensagem",
         formato_slug: mensagem.format || "digital",
-        data_entrega: delivery.selectedDate || null,
+        // A data vem como string ISO do localStorage, salvamos assim no Firebase
+        data_entrega: delivery.dataEntrega || null, 
         audio_url: localStorage.getItem('mimo_final_audio'),
         video_url: localStorage.getItem('mimo_final_video')
       },
@@ -97,8 +115,8 @@ export default function PagamentoPage() {
         tipo: delivery.tipoEntrega || "digital",
         endereco: delivery.endereco || null,
         cpe: delivery.cpe || null,
-        metodo_digital: delivery.digitalMethod || null,
-        metodo_fisico: delivery.fisicaMethod || null
+        metodo_digital: delivery.metodoDigital || null,
+        metodo_fisico: delivery.metodoFisico || null
       },
       financeiro: {
         total: cartTotal,
@@ -109,16 +127,17 @@ export default function PagamentoPage() {
       criado_em: serverTimestamp(),
     };
 
+    // Salva no Firestore
     await addDoc(collection(db, "pedidos"), orderData);
     return orderData;
   }, [email, cartTotal, metodo]);
 
-  // =========================
-  // HANDLERS DE PAGAMENTO
-  // =========================
+  // ==========================================
+  // 3. HANDLERS (PIX, BOLETO, WHATSAPP)
+  // ==========================================
   const handlePayment = async (method: 'pix' | 'boleto', extraBoletoData?: Record<string, unknown>) => {
-    if (!email) {
-      alert("Por favor, preencha o e-mail para continuar.");
+    if (!email || !email.includes('@')) {
+      alert("Por favor, insira um e-mail válido para processar o pagamento.");
       return;
     }
 
@@ -139,6 +158,7 @@ export default function PagamentoPage() {
       const data: PaymentResponse = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Erro no pagamento');
 
+      // Salva no Firebase assim que o gateway responde com sucesso
       await saveOrderUniversal('checkout', data.data);
 
       if (method === 'pix' && data.data?.qr_code) {
@@ -151,7 +171,7 @@ export default function PagamentoPage() {
       }
     } catch (err) {
       console.error(err);
-      alert('Erro ao processar pagamento.');
+      alert('Erro ao processar pagamento. Verifique os dados e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -161,10 +181,17 @@ export default function PagamentoPage() {
     setLoading(true);
     try {
       const savedData = await saveOrderUniversal('whatsapp');
+      
+      // Formata a data para uma leitura amigável no WhatsApp
+      const dataFormatada = savedData.conteudo.data_entrega 
+        ? new Date(savedData.conteudo.data_entrega).toLocaleDateString('pt-BR')
+        : 'A combinar';
+
       const msgParaWpp = `*NOVO PEDIDO: ${savedData.pedidoId}*\n` +
         `----------------------------------\n` +
         `*De:* ${savedData.conteudo.de}\n` +
         `*Para:* ${savedData.conteudo.para}\n` +
+        `*Data de Entrega:* ${dataFormatada}\n` + // Adicionado aqui
         `*Total:* R$ ${cartTotal.toFixed(2).replace('.', ',')}\n` +
         `----------------------------------\n` +
         `Olá! Quero finalizar o pagamento via WhatsApp.`;
@@ -184,69 +211,73 @@ export default function PagamentoPage() {
 
       <main className="flex-grow sm:px-16 px-8 pt-24 pb-8 sm:pt-28 sm:pb-12">
         <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">Pagamento</h1>
-        <p className="text-sm text-gray-600 text-center mb-8">Escolha o seu tipo de pagamento</p>
+        <p className="text-sm text-gray-600 text-center mb-8">Escolha como prefere pagar seu Mimo</p>
 
-        <div className="max-w-md mx-auto mb-2 text-center">
-          <p className="text-gray-700">
-            Total da compra:
-            <span className="ml-2 font-bold text-lg text-gray-900">
-              R$ {cartTotal.toFixed(2).replace('.', ',')}
-            </span>
+        <div className="max-w-md mx-auto mb-4 text-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+          <p className="text-gray-600 text-sm">Total a pagar:</p>
+          <p className="font-extrabold text-2xl text-red-900">
+            R$ {cartTotal.toFixed(2).replace('.', ',')}
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-md p-8 space-y-8 max-w-lg mx-auto">
+        <div className="bg-white rounded-2xl shadow-md p-8 space-y-8 max-w-lg mx-auto border border-gray-100">
           <PaymentMethodSelector value={metodo} onChange={setMetodo} />
 
-          {metodo === 'pix' && (
-            <PixPaymentSection
-              email={email}
-              onEmailChange={setEmail}
-              onGeneratePix={() => handlePayment('pix')}
-              loading={loading}
-              qrCode={qrCode}
-              pixKey={pixKey}
-            />
-          )}
+          {/* Seções de Pagamento Dinâmicas */}
+          <div>
+            {metodo === 'pix' && (
+              <PixPaymentSection
+                email={email}
+                onEmailChange={setEmail}
+                onGeneratePix={() => handlePayment('pix')}
+                loading={loading}
+                qrCode={qrCode}
+                pixKey={pixKey}
+              />
+            )}
 
-          {metodo === 'cartao' && <CreditCardPaymentSection cartTotal={cartTotal} />}
+            {metodo === 'cartao' && <CreditCardPaymentSection cartTotal={cartTotal} />}
 
-          {metodo === 'boleto' && (
-            <BoletoPaymentSection
-              email={email}
-              onEmailChange={setEmail}
-              onGenerateBoleto={(data: Record<string, unknown>) => handlePayment('boleto', data)}
-              loading={loading}
-              boletoUrl={boletoUrl}
-            />
-          )}
+            {metodo === 'boleto' && (
+              <BoletoPaymentSection
+                email={email}
+                onEmailChange={setEmail}
+                onGenerateBoleto={(data: Record<string, unknown>) => handlePayment('boleto', data)}
+                loading={loading}
+                boletoUrl={boletoUrl}
+              />
+            )}
 
-          <div className="space-y-3 pt-2">
-            <Link
-              href="/home"
-              className="w-full flex items-center justify-center gap-2 font-semibold p-3 border border-red-900 text-red-900 rounded-full hover:bg-gray-50 transition"
-            >
-              Cancelar
-            </Link>
+            {!metodo && (
+              <p className="text-center text-gray-400 text-sm italic">
+                Selecione um método acima para continuar
+              </p>
+            )}
           </div>
 
-          <div className="flex items-center py-2">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="mx-4 text-gray-500 text-sm font-medium">OU</span>
-            <div className="flex-grow border-t border-gray-300"></div>
+          <div className="flex items-center">
+            <div className="flex-grow border-t border-gray-200"></div>
+            <span className="mx-4 text-gray-400 text-xs font-bold uppercase tracking-widest">Ou</span>
+            <div className="flex-grow border-t border-gray-200"></div>
           </div>
 
           <button
             onClick={handleWhatsAppFinalization}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 p-3 border-2 border-green-500 text-green-700 rounded-full hover:bg-green-50 font-semibold transition-all active:scale-95 shadow-sm disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 p-4 border-2 border-green-500 text-green-700 rounded-full hover:bg-green-50 font-bold transition-all active:scale-95 disabled:opacity-50"
           >
             <Image src="/images/whatsapp.svg" alt="WhatsApp" width={24} height={24} />
-            {loading ? 'Processando...' : 'Finalizar via WhatsApp'}
+            Finalizar via WhatsApp
           </button>
+
+          <div className="pt-4 text-center">
+             <Link href="/dados-entrega" className="text-sm text-gray-400 hover:text-gray-600 underline">
+                Voltar aos dados de entrega
+             </Link>
+          </div>
         </div>
       </main>
-         
+          
       <Footer />
     </div>
   );

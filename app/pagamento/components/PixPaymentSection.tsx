@@ -1,4 +1,6 @@
 // app/pagamento/components/PixPaymentSection.tsx
+'use client';
+
 import { useState } from 'react';
 import { ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 import EmailInput from './EmailInput';
@@ -24,6 +26,7 @@ export default function PixPaymentSection({
   const [emailError, setEmailError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Validação simples de e-mail
   const validateEmail = (email: string): boolean =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -47,69 +50,98 @@ export default function PixPaymentSection({
     }
   };
 
-  const isUserLoggedIn = email && validateEmail(email);
+  // Lógica corrigida: O input de e-mail aparece apenas se NÃO houver um QR Code gerado
+  const showForm = !qrCode;
 
   return (
     <div className="max-w-md mx-auto space-y-6">
-      {!isUserLoggedIn && (
-        <EmailInput
-          value={email}
-          onChange={onEmailChange}
-          error={emailError}
-          setError={setEmailError}
-        />
-      )}
+      {showForm ? (
+        /* SEÇÃO DE ENTRADA DE DADOS */
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <EmailInput
+            value={email}
+            onChange={onEmailChange}
+            error={emailError}
+            setError={setEmailError}
+          />
 
-      {!qrCode ? (
-        <div className="text-center">
-          <button
-            onClick={handleGenerate}
-            disabled={loading || (email.trim() === '' && !isUserLoggedIn) || (!isUserLoggedIn && !validateEmail(email))}
-            className="w-full bg-green-800 text-white py-3 px-6 rounded-full font-medium hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Gerando QR Code...' : 'Gerar pagamento PIX'}
-          </button>
-          <p className="text-xs text-gray-500 mt-3">
-            Após o pagamento, você receberá um e-mail de confirmação.
-          </p>
+          <div className="text-center">
+            <button
+              onClick={handleGenerate}
+              disabled={loading || !validateEmail(email)}
+              className="w-full bg-green-800 text-white py-3 px-6 rounded-full font-medium hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-md"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Gerando QR Code...
+                </span>
+              ) : (
+                'Gerar pagamento PIX'
+              )}
+            </button>
+            <p className="text-xs text-gray-500 mt-3">
+              Após o pagamento, você receberá um e-mail de confirmação.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="space-y-6">
+        /* SEÇÃO DO PAGAMENTO GERADO */
+        <div className="space-y-6 animate-in zoom-in-95 fade-in duration-500">
           <div className="text-center">
-            <p className="font-medium text-gray-800 mb-3">Escaneie o QR Code</p>
-            <Image 
-              src={qrCode}
-              width={200} 
-              height={200}
-              alt="QR Code para pagamento PIX"
-              className="w-64 h-64 mx-auto border rounded-lg shadow-sm bg-white p-2"
-            />
-            <p className="text-sm text-gray-500 mt-1">Validade: 2h</p>
+            <div className="inline-block p-2 bg-green-100 text-green-800 rounded-full text-xs font-bold px-3 mb-4">
+              PIX AGUARDANDO PAGAMENTO
+            </div>
+            <p className="font-medium text-gray-800 mb-3">Escaneie o QR Code abaixo:</p>
+            
+            <div className="relative inline-block border-4 border-white shadow-xl rounded-xl overflow-hidden bg-white p-2">
+              <Image 
+                src={qrCode}
+                width={250} 
+                height={250}
+                alt="QR Code para pagamento PIX"
+                className="w-64 h-64 mx-auto"
+                priority
+              />
+            </div>
+            <p className="text-sm text-gray-500 mt-3">Validade: 2 horas</p>
           </div>
 
           {pixKey && (
-            <div className="text-center space-y-3">
-              <p className="text-sm text-gray-600">Ou copie a chave PIX abaixo:</p>
+            <div className="text-center space-y-3 bg-gray-50 p-4 rounded-xl border border-dashed border-gray-300">
+              <p className="text-sm text-gray-600 font-medium">Ou copie a chave PIX abaixo:</p>
               <div className="relative max-w-xs mx-auto">
                 <input
                   readOnly
                   value={pixKey}
-                  className="w-full p-3 pl-4 pr-10 border rounded-lg bg-gray-50 text-sm font-mono truncate"
+                  className="w-full p-3 pl-4 pr-12 border rounded-lg bg-white text-xs font-mono truncate focus:ring-2 focus:ring-green-500 outline-none"
                 />
                 <button
                   onClick={copyToClipboard}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                  aria-label="Copiar chave PIX"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-gray-400 hover:text-green-600 transition-colors"
+                  title="Copiar chave"
                 >
                   {copied ? (
-                    <CheckIcon className="h-5 w-5 text-green-600" />
+                    <CheckIcon className="h-6 w-6 text-green-600" />
                   ) : (
-                    <ClipboardIcon className="h-5 w-5" />
+                    <ClipboardIcon className="h-6 w-6" />
                   )}
                 </button>
               </div>
+              {copied && (
+                <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider">
+                  Código copiado!
+                </p>
+              )}
             </div>
           )}
+          
+          <button 
+            onClick={() => window.location.reload()} 
+            className="w-full text-xs text-gray-400 hover:text-gray-600 underline"
+          >
+            Usar outro e-mail
+          </button>
         </div>
       )}
     </div>

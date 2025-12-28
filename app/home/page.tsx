@@ -14,6 +14,11 @@ import CartasDoCoracaoSelector from './components/CartasDoCoracaoSelector';
 import { db } from '../../lib/firebaseConfig'; 
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 
+interface Carta {
+  id: string;
+  titulo: string;
+  conteudo: string;
+}
 export default function HomePage() {
   const router = useRouter();
   
@@ -27,29 +32,37 @@ export default function HomePage() {
   const [selectedFormat, setSelectedFormat] = useState<FormatoTipo>('digital');
   
   // Estados de Dados do Firebase
-  const [cartasDoCoracao, setCartasDoCoracao] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cartasDoCoracao, setCartasDoCoracao] = useState<Carta[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
   const [prices, setPrices] = useState<Record<FormatoTipo, number>>({
-    digital: 70, 
-    fisico: 120, 
-    digital_audio: 140, 
-    digital_video: 170, 
-    digital_fisico_audio: 200, 
-    full_premium: 300,
+    digital: 10, 
+    fisico: 10, 
+    digital_audio: 10, 
+    digital_video: 10, 
+    digital_audio_video: 10, 
+    full_premium: 10,
   });
 
-  // Busca Frases e Preços do Firebase
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // 1. Buscar Mensagens Predefinidas
-        const querySnapshot = await getDocs(collection(db, "mensagens_predefinidas"));
-        const frases: string[] = [];
-        querySnapshot.forEach((doc) => {
-          if (doc.data().texto) frases.push(doc.data().texto);
-        });
-        setCartasDoCoracao(frases);
+useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // 1. Buscar Mensagens Predefinidas
+      const querySnapshot = await getDocs(collection(db, "mensagens_predefinidas"));
+      const frases: Carta[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.texto) {
+          frases.push({
+            id: doc.id,
+            titulo: data.titulo || "Sem Título", // Fallback caso não tenha título
+            conteudo: data.texto
+          });
+        }
+      });
+      setCartasDoCoracao(frases);
 
         // 2. Buscar Preços (Documento específico)
         const precosDoc = await getDoc(doc(db, "precos_carta", "precos"));
@@ -82,8 +95,8 @@ export default function HomePage() {
     };
     localStorage.setItem('mimo_mensagem', JSON.stringify(mensagemData));
     
-    const needsAudio = ['digital_audio', 'digital_fisico_audio', 'full_premium'].includes(selectedFormat);
-    const needsVideo = ['digital_video', 'full_premium'].includes(selectedFormat);
+    const needsAudio = ['digital_audio', 'digital_audio_video', 'full_premium'].includes(selectedFormat);
+    const needsVideo = ['digital_video', 'digital_audio_video', 'full_premium'].includes(selectedFormat);
 
     if (needsAudio && needsVideo) router.push('/midia?tipo=both');
     else if (needsVideo) router.push('/midia?tipo=video');
@@ -143,15 +156,15 @@ export default function HomePage() {
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-900"></div>
                       </div>
                     ) : (
-                      <CartasDoCoracaoSelector
-                        cartas={cartasDoCoracao}
-                        selected={mensagemSelecionada}
-                        onSelect={(frase) => {
-                          setMensagemSelecionada(frase);
-                          setMessage(frase);
-                          setUsarCarta(false);
-                        }}
-                      />
+<CartasDoCoracaoSelector
+  cartas={cartasDoCoracao}
+  selectedId={selectedId} 
+  onSelect={(carta) => {
+    setSelectedId(carta.id);
+    setMessage(carta.conteudo); 
+    // Se quiser que fique aberto para leitura, remova o setUsarCarta(false) daqui
+  }}
+/>
                     )}
                   </div>
                 )}

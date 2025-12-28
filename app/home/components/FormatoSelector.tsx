@@ -18,7 +18,7 @@ export type FormatoTipo =
   | 'fisico'
   | 'digital_audio'
   | 'digital_video'
-  | 'digital_fisico_audio'
+  | 'digital_audio_video'
   | 'full_premium';
 
 type IconType = React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -45,22 +45,22 @@ const FORMAT_INFO: Record<FormatoTipo, FormatoInfo> = {
     description: 'Papel especial e entrega via Correios',
   },
   digital_audio: {
-    label: 'Digital + Áudio',
+    label: 'Cartão Digital + Áudio',
     icon: SpeakerWaveIcon,
     description: 'Sua voz gravada na mensagem',
   },
   digital_video: {
-    label: 'Digital + Vídeo',
+    label: 'Cartão Digital + Vídeo',
     icon: VideoCameraIcon,
     description: 'Um vídeo especial para emocionar',
   },
-  digital_fisico_audio: {
-    label: 'Digital e Físico + Áudio',
+  digital_audio_video: {
+    label: 'Cartão Digital e Áudio + Vídeo',
     icon: SparklesIcon,
-    description: 'O melhor dos dois mundos + Áudio',
+    description: 'O melhor dos dois video + Áudio',
   },
   full_premium: {
-    label: 'Experiência Full Premium',
+    label: 'Cartão Digital + Físico + Áudio + Vídeo',
     icon: SparklesIcon,
     description: 'Físico, Digital, Áudio e Vídeo (Completo)',
   },

@@ -25,7 +25,8 @@ export default function MensagemPreview({ from, to, message, isChecked }: Mensag
       <div className="font-semibold absolute text-[10px] sm:text-xs top-[54%] sm:top-[54.5%] left-[15%] sm:left-[15%] w-[30%] sm:w-[33%] h-[5%] text-gray-500 whitespace-pre-line break-words overflow-hidden leading-tight">
         {to || 'Nome'}
       </div>
-      <div className="absolute text-[10px] sm:text-xs top-[62%] sm:top-[63%] left-[7%] sm:left-[8%] w-[36%] sm:w-[35%] text-gray-500 italic whitespace-pre-line break-words sm:max-h-[140px] max-h-[60px] overflow-hidden leading-tight">
+      <div className="absolute text-[10px] sm:text-xs top-[62%] sm:top-[63%] left-[7%] sm:left-[8%] w-[36%] sm:w-[35%]
+       text-gray-500 italic whitespace-pre-line break-words sm:max-h-[110px] max-h-[100px] overflow-hidden overflow-y-auto pr custom-scrollbar leading-tight">
         {message || 'Sua mensagem...'}
       </div>
     </div>

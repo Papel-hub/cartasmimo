@@ -23,14 +23,13 @@ const VALID_FISICA_METHODS: FisicaMethod[] = ['correios'];
 export default function EntregaForm() {
   const router = useRouter();
 
-  const [tipoEntrega, setTipoEntrega] =
-    useState<'digital' | 'fisica' | 'ambos'>('digital');
+  const [tipoEntrega, setTipoEntrega] = useState<'digital' | 'fisica' | 'ambos'>('digital');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [digitalMethod, setDigitalMethod] = useState<DigitalMethod | null>(null);
   const [fisicaMethod, setFisicaMethod] = useState<FisicaMethod | null>(null);
-
   const [, setCartItems] = useState<CartItem[]>([]);
 
+  // 1. Efeito para carregar dados do carrinho e validar acesso
   useEffect(() => {
     const loadCart = () => {
       const mensagemStr = localStorage.getItem('mimo_mensagem');
@@ -44,7 +43,6 @@ export default function EntregaForm() {
 
       try {
         const mensagem = JSON.parse(mensagemStr) as { price?: number };
-
         setCartItems([
           {
             id: 'mensagem-personalizada',
@@ -62,6 +60,28 @@ export default function EntregaForm() {
     loadCart();
   }, [router]);
 
+  // 2. Efeito para restaurar o que foi salvo no LocalStorage anteriormente
+  useEffect(() => {
+    const savedSelection = localStorage.getItem('deliverySelection');
+    if (savedSelection) {
+      try {
+        const parsed = JSON.parse(savedSelection);
+        
+        // Restaura a data convertendo de String ISO para Objeto Date
+        if (parsed.dataEntrega) {
+          setSelectedDate(new Date(parsed.dataEntrega));
+        }
+        
+        // Restaura os outros estados
+        if (parsed.tipoEntrega) setTipoEntrega(parsed.tipoEntrega);
+        if (parsed.metodoDigital) setDigitalMethod(parsed.metodoDigital);
+        if (parsed.metodoFisico) setFisicaMethod(parsed.metodoFisico);
+      } catch (e) {
+        console.error("Erro ao recuperar seleção de entrega:", e);
+      }
+    }
+  }, []);
+
   const canContinue = (): boolean => {
     if (!selectedDate) return false;
 
@@ -70,10 +90,7 @@ export default function EntregaForm() {
     }
 
     if (tipoEntrega === 'fisica') {
-      return (
-        fisicaMethod !== null &&
-        VALID_FISICA_METHODS.includes(fisicaMethod)
-      );
+      return fisicaMethod !== null && VALID_FISICA_METHODS.includes(fisicaMethod);
     }
 
     if (tipoEntrega === 'ambos') {
@@ -88,24 +105,22 @@ export default function EntregaForm() {
   };
 
   const handleContinue = () => {
-    if (!canContinue()) return;
+    if (!canContinue() || !selectedDate) return;
 
     const deliverySelection = {
       tipoEntrega,
-      dataEntrega: selectedDate?.toISOString() ?? null,
+      // Salva a data como ISOString para garantir persistência correta
+      dataEntrega: selectedDate.toISOString(), 
       metodoDigital: digitalMethod,
       metodoFisico: fisicaMethod,
+      // Mantém referências dos arquivos se existirem
       arquivos: {
         audio: localStorage.getItem('mimo_final_audio'),
         video: localStorage.getItem('mimo_final_video'),
       },
     };
 
-    localStorage.setItem(
-      'deliverySelection',
-      JSON.stringify(deliverySelection)
-    );
-
+    localStorage.setItem('deliverySelection', JSON.stringify(deliverySelection));
     router.push('/dados-entrega');
   };
 

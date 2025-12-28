@@ -53,15 +53,18 @@ export default function DeliveryCalendar({
     onDateSelect(clickedDate);
   };
 
-  const isSelected = (day: number) => {
-    if (!selectedDate) return false;
-    const d = new Date(selectedDate); // Garante que é um objeto Date
-    return (
-      d.getDate() === day &&
-      d.getMonth() === currentMonth.getMonth() &&
-      d.getFullYear() === currentMonth.getFullYear()
-    );
-  };
+const isSelected = (day: number) => {
+  if (!selectedDate) return false;
+  
+  // Criamos um objeto Date da data selecionada para comparar apenas dia/mês/ano
+  const sel = new Date(selectedDate);
+  
+  return (
+    sel.getDate() === day &&
+    sel.getMonth() === currentMonth.getMonth() &&
+    sel.getFullYear() === currentMonth.getFullYear()
+  );
+};
 
   const isPast = (day: number) => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
