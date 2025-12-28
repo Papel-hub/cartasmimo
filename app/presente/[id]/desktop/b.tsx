@@ -64,16 +64,16 @@ export default function PresenteCliente({ params }: PageProps) {
 
 
   if (loading) return (
-    <div className="min-h-screen bg-stone-500 flex items-center justify-center">
+    <div className="min-h-screen bg-stone-300 flex items-center justify-center">
       <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-red-900"></div>
     </div>
   );
 
   if (!pedido) return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-500">
+    <div className="min-h-screen flex items-center justify-center bg-[#f4f1ea]">
       <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-stone-200">
         <FaInfoCircle className="mx-auto text-stone-300 mb-4 text-3xl" />
-        <p className="font-sans font-bold text-stone-600">Presente não encontrado ou expirado.</p>
+        <p className="font-sans font-bold text-stone-600">Presente nÃ£o encontrado.</p>
       </div>
     </div>
   );
@@ -81,25 +81,21 @@ export default function PresenteCliente({ params }: PageProps) {
   const temMidia = !!(pedido.conteudo?.audio_url || pedido.conteudo?.video_url);
 
   return (
-    <div className="min-h-[100dvh] bg-stone-500 flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden relative selection:bg-red-100">
+    <div className="min-h-[100dvh] bg-[#f4f1ea] flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden relative selection:bg-red-100">
       
-      {step >= 1 && (
-              <button 
-                onClick={() => setStep(0)}
-                className="fixed top-4 right-4 z-[999] flex items-center gap-2 bg-white text-black px-4 py-2 rounded-full text-[10px] font-black tracking-widest shadow-2xl hover:bg-red-900 hover:text-white transition-all"
-              >
-                <FaUndo size={12} /> REVER
-              </button>
-        )}
       {/* CONTAINER DO LIVRO INTERATIVO */}
-      <div 
-        className="relative w-full max-w-[320px] sm:max-w-[350px] bg-stone-500 aspect-[7/10] sm:h-[500px]"
-        style={{ perspective: '2000px' }}
+      {/* CONTAINER DO LIVRO */}
+      <div
+        className={`relative w-full max-w-[320px] sm:max-w-[350px] aspect-[7/10] sm:h-[500px]
+          transition-transform duration-1000 ease-in-out
+          ${step === 0 ? 'translate-x-0' : 'translate-x-1/4'}
+        `}
+        style={{ perspective: '4000px' }}
       >
         
-        {/* --- FOLHA 2: midiA (Frente) / VERSO FINAL (Verso) --- */}
+        {/* --- FOLHA 2: MÃDIA (Frente) / VERSO FINAL (Verso) --- */}
         <div 
-          className="absolute inset-0 duration-1000 ease-in-out bg-stone-500 origin-left transition-transform shadow-2xl"
+          className="absolute inset-0 duration-1000 ease-in-out origin-left transition-transform shadow-2xl"
           style={{ 
             transformStyle: 'preserve-3d',
             transform: step === 2 ? 'rotateY(-180deg)' : 'rotateY(0deg)',
@@ -107,11 +103,11 @@ export default function PresenteCliente({ params }: PageProps) {
           }}
           onClick={() => step === 1 && setStep(2)}
         >
-          {/* FRENTE: PÃGINA 3 (MÃidia) */}
-          <div className="absolute inset-0 backface-hidden bg-stone-500 border-l border-stone-200 overflow-hidden cursor-pointer">
+          {/* FRENTE: PÃGINA 3 (MÃ­dia) */}
+          <div className="absolute inset-0 backface-hidden rounded-r-lg bg-stone-50 border-l border-stone-200 overflow-hidden cursor-pointer">
             <Image 
               src="/images/carta3.svg" 
-              alt="Background Midia" 
+              alt="Background MÃ­dia" 
               fill 
               className="object-cover select-none pointer-events-none" 
             />
@@ -130,7 +126,7 @@ export default function PresenteCliente({ params }: PageProps) {
                         onClick={(e) => { e.stopPropagation(); setActiveModal('audio'); }}
                         className="w-full flex items-center justify-between bg-white/95 p-4 rounded-xl border border-stone-200 text-xs font-bold shadow-sm active:scale-95 transition-all hover:bg-stone-50"
                       >
-                        <span className="flex items-center gap-3"><FaVolumeUp className="text-red-800" /> OUVIR AUDIO</span>
+                        <span className="flex items-center gap-3"><FaVolumeUp className="text-red-800" /> OUVIR ÃUDIO</span>
                         <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
                       </button>
                     )}
@@ -140,16 +136,16 @@ export default function PresenteCliente({ params }: PageProps) {
                         onClick={(e) => { e.stopPropagation(); setActiveModal('video'); }}
                         className="w-full flex items-center justify-between bg-stone-900 p-4 rounded-xl text-white text-xs font-bold shadow-lg active:scale-95 transition-all hover:bg-stone-800"
                       >
-                        <span className="flex items-center gap-3"><FaPlay className="text-red-500" /> VER VÍDEO</span>
+                        <span className="flex items-center gap-3"><FaPlay className="text-red-500" /> VER VÃDEO</span>
                         <FaPlay className="opacity-20" size={10} />
                       </button>
                     )}
-                    <p className="text-[9px] text-stone-400 text-center animate-pulse mt-6 font-medium uppercase tracking-widest">Clique para fechar</p>
+                    <p className="text-[9px] text-stone-400 text-center animate-pulse mt-6 font-medium uppercase tracking-widest">Clique na pÃ¡gina para fechar</p>
                   </div>
                 ) : (
                    <div className="text-center opacity-30">
                       <FaInfoCircle className="mx-auto mb-2 text-xl" />
-                      <p className="text-[10px] italic">Sem mídia disponível.</p>
+                      <p className="text-[10px] italic">Sem mÃ­dia disponÃ­vel.</p>
                    </div>
                 )}
             </div>
@@ -157,30 +153,25 @@ export default function PresenteCliente({ params }: PageProps) {
 
           {/* VERSO: CARTA 4 (Contracapa Final) */}
           <div 
-            className="absolute inset-0 backface-hidden bg-stone-500 rounded-lg overflow-hidden bg-white"
+            className="absolute inset-0 backface-hidden rounded-l-lg overflow-hidden bg-white"
             style={{ transform: 'rotateY(180deg)' }}
           >
             <Image src="/images/carta4.svg" alt="Verso Final" fill className="object-cover" />
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-              <p className="text-stone-800 mb-2 font-serif text-white/70 italic text-sm">
-                Esperamos que tenha gostado!
-              </p> 
-                                      <div className="absolute top-[66%] overflow-hidden">
-                                        <Image
-                                        src="/images/qrcode.png"
-                                        alt="Cartão"
-                                        width={70}
-                                        height={70}
-                                        className="object-contain w-full max-w-xs"
-                                      />
-                                      </div>   
+                <p className="text-stone-800 font-serif italic text-sm mb-4">Esperamos que tenha gostado!</p>
+                <button 
+                  onClick={() => setStep(0)}
+                  className="flex items-center gap-3 mx-auto bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-black tracking-widest active:scale-95 transition-all hover:bg-red-900 shadow-lg"
+                >
+                  <FaUndo size={12} /> REVER DO INÃCIO
+                </button>
             </div>
           </div>
         </div>
 
         {/* --- FOLHA 1: CAPA (Frente) / MENSAGEM (Verso) --- */}
         <div 
-          className="absolute inset-0 duration-1000 ease-in-out bg-stone-500 origin-left transition-transform cursor-pointer"
+          className="absolute inset-0 duration-1000 ease-in-out origin-left transition-transform cursor-pointer"
           style={{ 
             transformStyle: 'preserve-3d',
             transform: step >= 1 ? 'rotateY(-180deg)' : 'rotateY(0deg)',
@@ -189,7 +180,7 @@ export default function PresenteCliente({ params }: PageProps) {
           onClick={() => step === 0 && setStep(1)}
         >
           {/* FRENTE: CAPA (Carta 1) */}
-          <div className="absolute inset-0 backface-hidden bg-stone-500 shadow-2xl overflow-hidden">
+          <div className="absolute inset-0 backface-hidden shadow-2xl rounded-r-lg overflow-hidden">
             <Image src="/images/carta1.svg" alt="Capa" fill className="object-cover" priority />
             <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                <div className="mt-16 sm:mt-24 space-y-2">
@@ -206,7 +197,7 @@ export default function PresenteCliente({ params }: PageProps) {
 
           {/* VERSO: PÃGINA 2 (Texto - Carta 2) */}
           <div 
-            className="absolute inset-0 backface-hidden bg-stone-500 overflow-hidden"
+            className="absolute inset-0 backface-hidden rounded-l-lg overflow-hidden bg-white"
             style={{ transform: 'rotateY(180deg)' }}
           >
             <Image src="/images/carta2.svg" alt="Background Texto" fill className="object-cover" />
@@ -231,50 +222,49 @@ export default function PresenteCliente({ params }: PageProps) {
 
       </div>
 
-      {/* MODAL DE MÍDIA (MODERNIZADO) */}
+      {/* --- MODAL DE MÃDIA --- */}
       {activeModal && (
-        <div className="fixed inset-0 z-[100] bg-stone-950/95 flex items-center justify-center p-6 backdrop-blur-xl">
+        <div className="fixed inset-0 z-[100] bg-stone-950/98 flex items-center justify-center p-4 backdrop-blur-xl">
           <button 
             onClick={() => setActiveModal(null)} 
-            className="absolute top-8 right-8 text-white/50 hover:text-white text-4xl p-2 transition-colors"
+            className="absolute top-6 right-6 text-white/40 hover:text-white text-3xl transition-colors p-2"
           >
             <FaTimes />
           </button>
           
-          <div className="w-full max-w-2xl bg-black rounded-3xl overflow-hidden border border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+          <div className="w-full max-w-2xl bg-black rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/5">
             {activeModal === 'video' ? (
               <div className="aspect-video w-full">
                 <iframe 
-                  src={pedido.conteudo?.video_url ?? ''} 
+                  src={pedido.conteudo?.video_url} 
                   className="w-full h-full" 
                   allow="autoplay; fullscreen" 
-                  title="Video Presente"
+                  title="VÃ­deo Presente"
                 />
               </div>
             ) : (
-              <div className="p-16 flex flex-col items-center bg-gradient-to-b from-stone-900 to-black">
-                <div className="relative mb-10">
-                  <div className="absolute inset-0 bg-red-500/20 blur-3xl rounded-full" />
-                  <FaVolumeUp className="text-red-500 text-6xl relative animate-pulse" />
+              <div className="p-10 sm:p-16 flex flex-col items-center bg-gradient-to-b from-stone-900 to-black">
+                <div className="relative mb-8">
+                  <div className="absolute inset-0 bg-red-600/20 blur-2xl animate-pulse" />
+                  <FaVolumeUp className="text-red-500 text-6xl relative z-10" />
                 </div>
                 <audio 
                   controls 
-                  src={pedido.conteudo?.audio_url ?? ''} 
+                  src={pedido.conteudo?.audio_url} 
                   className="w-full h-12 accent-red-600" 
                   autoPlay 
                 />
-                <p className="mt-8 text-stone-500 text-[10px] uppercase tracking-widest font-bold">Mensagem em áudio</p>
+                <p className="mt-6 text-stone-500 text-[10px] font-bold uppercase tracking-[0.3em]">Mensagem em Ã¡udio</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-
-      {/* RODAPÉ */}
+      {/* RODAPÃ‰ */}
       <div className="mt-12 text-center px-8">
         <p className="text-[9px] text-stone-500/40 uppercase leading-relaxed tracking-wider max-w-xs mx-auto">
-          Presente digital exclusivo. O conteúdo será <br/> desativado em breve por motivos de privacidade.
+          Presente digital exclusivo. O conteÃºdo serÃ¡ <br/> desativado em breve por motivos de privacidade.
         </p>
       </div>
       
