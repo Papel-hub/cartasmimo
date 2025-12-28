@@ -20,7 +20,6 @@ import BoletoPaymentSection from './components/BoletoPaymentSection';
 // Types
 import { 
   PaymentMethod, 
-  DeliveryData, 
   MensagemData, 
   PaymentResponse, 
   PaymentResponseData, 
