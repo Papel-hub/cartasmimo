@@ -55,7 +55,7 @@ const FORMAT_INFO: Record<FormatoTipo, FormatoInfo> = {
     description: 'Um vídeo especial para emocionar',
   },
   digital_audio_video: {
-    label: 'Cartão Digital e Áudio + Vídeo',
+    label: 'Cartão Digital + Áudio + Vídeo',
     icon: SparklesIcon,
     description: 'O melhor dos dois video + Áudio',
   },
