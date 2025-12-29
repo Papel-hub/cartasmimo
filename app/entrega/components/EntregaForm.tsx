@@ -8,7 +8,7 @@ import DeliveryCalendar from './DeliveryCalendar';
 import DeliveryMethodSection from './DeliveryMethodSection';
 
 type DigitalMethod = 'whatsapp' | 'email';
-type FisicaMethod = 'correios' | 'local';
+type FisicaMethod = 'correios' | 'local'| 'taxi';
 
 type CartItem = {
   id: string;
@@ -153,18 +153,19 @@ export default function EntregaForm() {
           title="Método Físico"
           options={[
             { id: 'correios', label: 'Correios' },
-            { id: 'local', label: 'Levantamento Local' },
+            { id: 'local', label: 'Retirar no Local' },
+            { id: 'taxi', label: 'Delivery / Uber / Taxi' },
           ]}
           selected={fisicaMethod}
           onSelect={setFisicaMethod}
         />
       )}
 
-      {fisicaMethod === 'local' && (
-        <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
-          Atualmente apenas os <strong>Correios</strong> estão disponíveis.
-        </p>
-      )}
+{ (fisicaMethod === 'local' || fisicaMethod === 'taxi') && (
+  <p className="text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
+    Atualmente apenas os <strong>Correios</strong> estão disponíveis.
+  </p>
+)}
 
       <div className="pt-4 space-y-3">
         <button
