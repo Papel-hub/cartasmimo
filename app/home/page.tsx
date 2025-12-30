@@ -79,12 +79,22 @@ useEffect(() => {
     fetchData();
   }, []);
 
-  const handleGoToNextStep = () => {
+const handleGoToNextStep = () => {
     if (!to || (!message && !mensagemSelecionada)) {
       alert("Por favor, preencha para quem é o Mimo e a mensagem.");
       return;
     }
+
+    // 1. Limpeza de Segurança (Reset)
+    // Isso garante que se o usuário pulou a página de mídia, 
+    // não exista nenhuma URL antiga sobrando no navegador.
+    localStorage.removeItem('mimo_final_audio');
+    localStorage.removeItem('mimo_final_video');
+    localStorage.removeItem('mimo_midia_audio'); // Blobs temporários
+    localStorage.removeItem('mimo_midia_video'); // Blobs temporários
+
     const mensagemFinal = usarCarta && mensagemSelecionada ? mensagemSelecionada : message;
+    
     const mensagemData = {
       from: isChecked ? 'Anônimo' : from || '',
       to: to || '',
@@ -93,15 +103,24 @@ useEffect(() => {
       price: prices[selectedFormat],
       timestamp: Date.now(),
     };
+
     localStorage.setItem('mimo_mensagem', JSON.stringify(mensagemData));
     
+    // Verificação de para onde enviar o usuário
     const needsAudio = ['digital_audio', 'digital_audio_video', 'full_premium'].includes(selectedFormat);
     const needsVideo = ['digital_video', 'digital_audio_video', 'full_premium'].includes(selectedFormat);
 
-    if (needsAudio && needsVideo) router.push('/midia?tipo=both');
-    else if (needsVideo) router.push('/midia?tipo=video');
-    else if (needsAudio) router.push('/midia?tipo=audio');
-    else router.push('/entrega');
+    if (needsAudio && needsVideo) {
+      router.push('/midia?tipo=both');
+    } else if (needsVideo) {
+      router.push('/midia?tipo=video');
+    } else if (needsAudio) {
+      router.push('/midia?tipo=audio');
+    } else {
+      // Se for "digital" simples, ele cai aqui. 
+      // Como limpamos o localStorage acima, o Firebase salvará NULL corretamente.
+      router.push('/entrega');
+    }
   };
 
   return (

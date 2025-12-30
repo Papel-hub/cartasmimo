@@ -4,47 +4,64 @@ import { existsSync } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
-// Tenta usar o caminho da Hostinger, se falhar, usa uma pasta dentro do projeto
+// Configurações de diretório
 const UPLOAD_DIR = '/var/www/uploads'; 
 const PUBLIC_BASE_URL = 'https://cartasdamimo.com/uploads';
 
 export async function POST(request: NextRequest) {
   console.log('--- INICIANDO UPLOAD ---');
+  
   try {
     const formData = await request.formData();
+    // Armazena os links gerados apenas para arquivos válidos
     const results: Record<string, string> = {};
 
-    // 1. Log de Verificação de Pasta
-    console.log(`Verificando diretório: ${UPLOAD_DIR}`);
+    // 1. Garantir que a pasta de destino existe
     if (!existsSync(UPLOAD_DIR)) {
       console.log('Diretório não existe. Tentando criar...');
       await mkdir(UPLOAD_DIR, { recursive: true });
-      console.log('Diretório criado com sucesso.');
     }
 
+    // 2. Iterar sobre os campos do formulário
     for (const [key, value] of formData.entries()) {
+      
+      // Verifica se o campo é um arquivo (Blob/File)
       if (value instanceof Blob) {
+        
+        // --- TRAVA CRUCIAL: Ignora se o arquivo estiver vazio (0 bytes) ---
+        if (value.size === 0) {
+          console.log(`⚠️ Campo "${key}" recebido, mas está vazio. Pulando...`);
+          continue; 
+        }
+
         const buffer = Buffer.from(await value.arrayBuffer());
+        
+        // Segunda trava: Garante que o buffer tem conteúdo
+        if (buffer.length === 0) {
+          console.log(`⚠️ Buffer do campo "${key}" está vazio. Pulando...`);
+          continue;
+        }
+
+        // Define extensão e nome único
         const extension = value.type?.split('/')[1] || 'webm';
         const fileName = `mimo-${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${extension}`;
-        
-        // 2. Log do Caminho do Arquivo
         const filePath = path.resolve(UPLOAD_DIR, fileName);
-        console.log(`Tentando salvar arquivo ${key} em: ${filePath}`);
-        console.log(`Tamanho do buffer: ${buffer.length} bytes`);
 
+        console.log(`💾 Salvando ${key}: ${fileName} (${value.size} bytes)`);
+
+        // Escreve o arquivo no disco
         await writeFile(filePath, buffer);
         
-        // Verificação imediata após escrita
+        // Verifica se a escrita foi bem sucedida antes de gerar a URL
         if (existsSync(filePath)) {
-          console.log(`✅ SUCESSO: Arquivo confirmado no disco: ${fileName}`);
           results[key] = `${PUBLIC_BASE_URL}/${fileName}`;
-        } else {
-          console.error(`❌ ERRO: O arquivo deveria estar lá, mas não foi encontrado após writeFile.`);
+          console.log(`✅ ${key} salvo com sucesso.`);
         }
       }
     }
 
+    // 3. Retorno da API
+    // Se results['audio'] não existir (porque foi pulado), retornará null.
     return NextResponse.json({
       success: true,
       audioPath: results['audio'] || null,
@@ -55,6 +72,10 @@ export async function POST(request: NextRequest) {
     const msg = error instanceof Error ? error.message : 'Erro desconhecido';
     console.error('--- FALHA NO UPLOAD ---');
     console.error('Erro detalhado:', error);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    
+    return NextResponse.json(
+      { success: false, error: msg }, 
+      { status: 500 }
+    );
   }
 }

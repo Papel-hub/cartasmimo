@@ -262,9 +262,8 @@ export default function PresenteCliente({ params }: PageProps) {
         </div>
       )}
 
-      {/* RODAPÉ */}
       <div className="mt-12 text-center px-8">
-        <p className="text-[9px] text-stone-500/40 uppercase leading-relaxed tracking-wider max-w-xs mx-auto">
+        <p className="text-[9px] text-white uppercase leading-relaxed tracking-wider max-w-xs mx-auto">
           Presente digital exclusivo. O conteúdo será <br/> desativado em breve por motivos de privacidade.
         </p>
       </div>

@@ -119,39 +119,44 @@ export default function PresenteCliente({ params }: PageProps) {
             <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black/5 to-transparent pointer-events-none" />
 
             <div className="absolute inset-0 flex flex-col items-center justify-center px-4 sm:px-8 z-20">
-                {temMidia ? (
-                  <div className={`w-full space-y-4 transition-opacity duration-500 ${step === 1 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                    <div className="text-center mb-4">
-                       <p className="text-[10px] font-black tracking-widest text-stone-400 uppercase">Sua Surpresa</p>
-                    </div>
-
-                    {pedido.conteudo?.audio_url && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setActiveModal('audio'); }}
-                        className="w-full flex items-center justify-between bg-white/95 p-4 rounded-xl border border-stone-200 text-xs font-bold shadow-sm active:scale-95 transition-all hover:bg-stone-50"
-                      >
-                        <span className="flex items-center gap-3"><FaVolumeUp className="text-red-800" /> OUVIR AUDIO</span>
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" />
-                      </button>
-                    )}
-
-                    {pedido.conteudo?.video_url && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setActiveModal('video'); }}
-                        className="w-full flex items-center justify-between bg-stone-900 p-4 rounded-xl text-white text-xs font-bold shadow-lg active:scale-95 transition-all hover:bg-stone-800"
-                      >
-                        <span className="flex items-center gap-3"><FaPlay className="text-red-500" /> VER VÍDEO</span>
-                        <FaPlay className="opacity-20" size={10} />
-                      </button>
-                    )}
-                    <p className="text-[9px] text-stone-400 text-center animate-pulse mt-6 font-medium uppercase tracking-widest">Clique para fechar</p>
-                  </div>
-                ) : (
+    {/* Lógica dos Botões */}
+    {temMidia ? (
+      <>
+        {/* Botão de Áudio: Só aparece se existir audio_url */}
+        {pedido.conteudo?.audio_url && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); setActiveModal('audio'); }} 
+            className="w-full bg-white/95 p-5 rounded-2xl border border-stone-100 font-bold text-xs flex items-center justify-between gap-4 shadow-xl hover:bg-stone-50 transition-colors"
+          >
+            <span className="flex items-center gap-3 text-stone-700">
+              <FaVolumeUp className="text-red-700" size={18} /> OUVIR MENSAGEM
+            </span>
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+          </button>
+        )}
+        
+        {/* Botão de Vídeo: Só aparece se existir video_url */}
+        {pedido.conteudo?.video_url && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); setActiveModal('video'); }} 
+            className="w-full bg-stone-900 p-5 rounded-2xl font-bold text-xs flex items-center justify-between gap-4 shadow-xl text-white hover:bg-stone-800 transition-colors"
+          >
+            <span className="flex items-center gap-3">
+              <FaPlay className="text-red-500" size={16} /> VER VÍDEO ESPECIAL
+            </span>
+            <FaPlay className="opacity-20" size={12} />
+          </button>
+        )}
+      </>
+    ) : (
+      /* Caso não tenha NENHUMA mídia */
+      <div className="w-full py-10 flex flex-col items-center justify-center border-2 border-dashed border-white/70 rounded-3xl">
                    <div className="text-center opacity-30">
-                      <FaInfoCircle className="mx-auto mb-2 text-xl" />
-                      <p className="text-[10px] italic">Sem mídia disponível.</p>
+                      <FaInfoCircle className="text-white/70 mx-auto mb-2 text-xl" />
+                      <p className="text-[10px] text-white/70 italic">Sem mídia disponível.</p>
                    </div>
-                )}
+      </div>
+    )}
             </div>
           </div>
 
@@ -273,7 +278,7 @@ export default function PresenteCliente({ params }: PageProps) {
 
       {/* RODAPÉ */}
       <div className="mt-12 text-center px-8">
-        <p className="text-[9px] text-stone-500/40 uppercase leading-relaxed tracking-wider max-w-xs mx-auto">
+        <p className="text-[9px] text-white uppercase leading-relaxed tracking-wider max-w-xs mx-auto">
           Presente digital exclusivo. O conteúdo será <br/> desativado em breve por motivos de privacidade.
         </p>
       </div>

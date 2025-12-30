@@ -104,25 +104,44 @@ export default function EntregaForm() {
     return false;
   };
 
-  const handleContinue = () => {
-    if (!canContinue() || !selectedDate) return;
+const handleContinue = () => {
+  if (!canContinue() || !selectedDate) return;
 
-    const deliverySelection = {
-      tipoEntrega,
-      // Salva a data como ISOString para garantir persistência correta
-      dataEntrega: selectedDate.toISOString(), 
-      metodoDigital: digitalMethod,
-      metodoFisico: fisicaMethod,
-      // Mantém referências dos arquivos se existirem
-      arquivos: {
-        audio: localStorage.getItem('mimo_final_audio'),
-        video: localStorage.getItem('mimo_final_video'),
-      },
-    };
-
-    localStorage.setItem('deliverySelection', JSON.stringify(deliverySelection));
-    router.push('/dados-entrega');
+  // Função interna para validar a URL
+  const getCleanUrl = (key: string) => {
+    const val = localStorage.getItem(key);
+    // Se for nulo, curto demais ou apenas a base da URL, retorna null
+    if (!val || val.length < 40 || val === 'https://cartasdamimo.com/uploads') {
+      return null;
+    }
+    return val;
   };
+
+  const audioFinal = getCleanUrl('mimo_final_audio');
+  const videoFinal = getCleanUrl('mimo_final_video');
+
+  const deliverySelection = {
+    tipoEntrega,
+    dataEntrega: selectedDate.toISOString(), 
+    metodoDigital: digitalMethod,
+    metodoFisico: fisicaMethod,
+    arquivos: {
+      audio: audioFinal,
+      video: videoFinal,
+    },
+  };
+
+  // Sincroniza o localStorage individual com o que acabamos de validar
+  // Isso limpa a "sujeira" caso ela exista
+  if (audioFinal) localStorage.setItem('mimo_final_audio', audioFinal);
+  else localStorage.removeItem('mimo_final_audio');
+
+  if (videoFinal) localStorage.setItem('mimo_final_video', videoFinal);
+  else localStorage.removeItem('mimo_final_video');
+
+  localStorage.setItem('deliverySelection', JSON.stringify(deliverySelection));
+  router.push('/dados-entrega');
+};
 
   return (
     <div className="bg-white rounded-2xl shadow-md space-y-6 max-w-xl mx-auto p-6 border border-gray-100">
