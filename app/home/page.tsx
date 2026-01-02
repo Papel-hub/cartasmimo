@@ -90,8 +90,15 @@ const handleGoToNextStep = () => {
     // não exista nenhuma URL antiga sobrando no navegador.
     localStorage.removeItem('mimo_final_audio');
     localStorage.removeItem('mimo_final_video');
-    localStorage.removeItem('mimo_midia_audio'); // Blobs temporários
-    localStorage.removeItem('mimo_midia_video'); // Blobs temporários
+    localStorage.removeItem('mimo_midia_audio'); 
+    localStorage.removeItem('mimo_midia_video'); 
+
+    localStorage.removeItem('valor_frete'); 
+    localStorage.removeItem('prazo_frete'); 
+    localStorage.removeItem('servico_frete'); 
+    localStorage.removeItem('frete_info_completo'); 
+
+    localStorage.removeItem('deliverySelection'); 
 
     const mensagemFinal = usarCarta && mensagemSelecionada ? mensagemSelecionada : message;
     
