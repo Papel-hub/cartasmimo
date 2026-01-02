@@ -12,9 +12,9 @@ import { MapPinIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 type DeliverySelection = {
   tipoEntrega: 'digital' | 'fisica' | 'ambos';
-  dataEntrega: string | null;      // Mudou de selectedDate para dataEntrega
-  metodoDigital: 'whatsapp' | 'email' | null; // Mudou de metodoDigital para metodoDigital
-  metodoFisico: 'correios' | 'local' | null;  // Mudou de fisicaMethod para metodoFisico
+  dataEntrega: string | null;     
+  metodoDigital: 'whatsapp' | 'email' | null; 
+  metodoFisico: 'correios' | 'local' | null;  
 };
 
 export default function DadosEntregaPage() {
@@ -44,47 +44,60 @@ export default function DadosEntregaPage() {
 
   if (!deliveryData) return null;
 
-const isDigital = deliveryData.tipoEntrega === 'digital' || deliveryData.tipoEntrega === 'ambos';
-const isFisica = deliveryData.tipoEntrega === 'fisica' || deliveryData.tipoEntrega === 'ambos';
-const isLocal = deliveryData.metodoFisico === 'local'; 
+  const isDigital = deliveryData.tipoEntrega === 'digital' || deliveryData.tipoEntrega === 'ambos';
+  const isFisica = deliveryData.tipoEntrega === 'fisica' || deliveryData.tipoEntrega === 'ambos';
+  const isLocal = deliveryData.metodoFisico === 'local'; 
 
   const handleContinue = () => {
-    let isValid = true;
+      let isValid = true;
 
-    // 1. Validação Destinatário
-    if (!destinatario.trim()) isValid = false;
+      // Validações básicas
+      if (!destinatario.trim()) isValid = false;
+      if (isDigital) {
+        if (deliveryData.metodoDigital === 'email' && !email.includes('@')) isValid = false;
+        if (deliveryData.metodoDigital === 'whatsapp' && !whatsapp.trim()) isValid = false;
+      }
+      if (isFisica && !isLocal) {
+        if (!endereco.trim() || !cpe.trim()) isValid = false;
+      }
 
-    // 2. Validação Digital
-    if (isDigital) {
-      if (deliveryData.metodoDigital === 'email' && !email.includes('@')) isValid = false;
-      if (deliveryData.metodoDigital === 'whatsapp' && !whatsapp.trim()) isValid = false;
-    }
+      if (!isValid) {
+        alert('Por favor, preencha os campos obrigatórios.');
+        return;
+      }
 
-    // 3. Validação Física (Somente se não for levantamento local)
-    if (isFisica && !isLocal) {
-      if (!endereco.trim() || !cpe.trim()) isValid = false;
-    }
+      // --- CONSOLIDAÇÃO DE TODOS OS DADOS ---
+      
+      // Recuperamos o que o componente de frete salvou no storage
+      const valorFrete = localStorage.getItem("valor_frete") || "0";
+      const prazoFrete = localStorage.getItem("prazo_frete") || "A consultar";
 
-    if (!isValid) {
-      alert('Por favor, preencha os campos obrigatórios para continuar.');
-      return;
-    }
+      const fullDeliveryData = {
+        ...deliveryData, // Tipo de entrega escolhido antes
+        destinatario: destinatario.trim(),
+        cep: isLocal ? 'RETIRADA' : cpe.replace(/\D/g, ""),
+        endereco: isLocal ? 'LEVANTAMENTO NO LOCAL' : endereco.trim(),
+        
+        // Dados Digitais
+        email: isDigital && deliveryData.metodoDigital === 'email' ? email : null,
+        whatsapp: isDigital && deliveryData.metodoDigital === 'whatsapp' ? whatsapp : null,
+        
+        // Dados Financeiros e Logísticos para o Pagamento
+        detalhesFrete: {
+          valor: isLocal ? 0 : parseFloat(valorFrete),
+          prazo: isLocal ? 'Imediato' : prazoFrete,
+          metodo: isLocal ? 'Retirada Local' : 'PAC Correios'
+        },
+        
+        dataFinalizacao: new Date().toISOString()
+      };
 
-    // Preparação dos dados para o Firebase/Painel
-    const fullDeliveryData = {
-      ...deliveryData,
-      destinatario,
-      email: isDigital && deliveryData.metodoDigital === 'email' ? email : null,
-      whatsapp: isDigital && deliveryData.metodoDigital === 'whatsapp' ? whatsapp : null,
-      // Se for local, marcamos o endereço como Ponto de Recolha
-      endereco: isLocal ? 'LEVANTAMENTO NO LOCAL' : endereco,
-      cpe: isLocal ? 'LOCAL' : cpe,
-      dataFinalizacaoDados: new Date().toISOString()
+      // SALVA TUDO EM UM ÚNICO OBJETO NO LOCALSTORAGE
+      localStorage.setItem('fullDeliveryData', JSON.stringify(fullDeliveryData));
+      
+      // Redireciona para o pagamento
+      router.push('/pagamento');
     };
-
-    localStorage.setItem('fullDeliveryData', JSON.stringify(fullDeliveryData));
-    router.push('/pagamento');
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">

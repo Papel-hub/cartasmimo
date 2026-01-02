@@ -61,12 +61,17 @@ export interface OrderSchema {
     cpe: string | null;
     metodo_digital: string | null;
     metodo_fisico: string | null;
+    // --- NOVOS CAMPOS ADICIONADOS ---
+    prazo_estimado?: string | null; 
   };
   financeiro: {
     total: number;
     metodo: string;
     payment_id: string | null;
     payment_status: string;
+    // --- NOVOS CAMPOS ADICIONADOS ---
+    valor_produto?: number;
+    valor_frete?: number;
   };
   criado_em: FieldValue;
 }

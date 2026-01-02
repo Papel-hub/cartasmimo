@@ -7,11 +7,19 @@ type Props = {
   setCpe: (v: string) => void;
 };
 
+// Interface para bater com o que sua API finalizada retorna
+interface FreteResponse {
+  valor: number;
+  valorFormatado: string;
+  prazo: string;
+  servico?: string;
+  error?: string;
+}
+
 export default function FisicaFields({ endereco, setEndereco, cpe, setCpe }: Props) {
-  const [freteInfo, setFreteInfo] = useState<{ valor: string; prazo: string } | null>(null);
+  const [freteInfo, setFreteInfo] = useState<FreteResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Máscara de CEP (00000-000)
   const formatarCEP = (v: string) => {
     return v.replace(/\D/g, "").replace(/^(\d{5})(\d)/, "$1-$2").slice(0, 9);
   };
@@ -27,35 +35,52 @@ export default function FisicaFields({ endereco, setEndereco, cpe, setCpe }: Pro
     }
   }, [cpe]);
 
-const calcular = async (cep: string) => {
-  setLoading(true);
-  try {
-    const res = await fetch("/api/correios", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cepDestino: cep }),
-    });
-    
-    const data = await res.json();
-    
-    // LOG PARA VOCÊ VER NO NAVEGADOR (Aperte F12 > Console)
-    console.log("Dados recebidos do frete:", data);
+  const calcular = async (cep: string) => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/correios", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cepDestino: cep }),
+        });
+        
+        const data: FreteResponse = await res.json();
+        
+        if (data && data.valor !== undefined) {
+          // Atualiza o estado local para exibir no componente atual
+          setFreteInfo(data);
+          
+          // --- PERSISTÊNCIA PARA A PÁGINA DE PAGAMENTO ---
+          
+          // 1. Salva o valor numérico (ex: 65.46) para somar no total
+          localStorage.setItem("valor_frete", data.valor.toString());
+          
+          // 2. Salva o prazo formatado (ex: "9 dias úteis") para o resumo do pedido
+          localStorage.setItem("prazo_frete", data.prazo);
+          
+          // 3. Salva o nome do serviço (ex: "PAC")
+          localStorage.setItem("servico_frete", data.servico || "PAC");
 
-    if (data && data.valor) {
-      setFreteInfo({
-        valor: data.valor,
-        prazo: data.prazo
-      });
-    } else {
-      setFreteInfo({ valor: "---", prazo: "N/A" });
-    }
-  } catch (err) {
-    console.error("Erro na requisição:", err);
-    setFreteInfo({ valor: "Erro", prazo: "N/A" });
-  } finally {
-    setLoading(false);
-  }
-};
+          // 4. Salva o JSON completo como backup de segurança
+          localStorage.setItem("frete_info_completo", JSON.stringify(data));
+
+        } else {
+          // Caso a API retorne erro ou o CEP seja inválido para entrega
+          setFreteInfo(null);
+          localStorage.removeItem("valor_frete");
+          localStorage.removeItem("prazo_frete");
+          localStorage.removeItem("servico_frete");
+          localStorage.removeItem("frete_info_completo");
+        }
+      } catch (err) {
+        console.error("Erro na requisição de frete:", err);
+        setFreteInfo(null);
+        // Limpa dados antigos em caso de falha na rede
+        localStorage.removeItem("valor_frete");
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <div className="space-y-4 max-w-md">
@@ -65,35 +90,45 @@ const calcular = async (cep: string) => {
           value={cpe}
           onChange={handleCepChange}
           placeholder="00000-000"
-          className="w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+          className="w-full p-2 border rounded-md focus:ring-red-600 focus:border-red-600 outline-none"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Endereço</label>
+        <label className="block text-sm font-medium text-gray-700">Endereço Completo</label>
         <input
           value={endereco}
           onChange={(e) => setEndereco(e.target.value)}
           placeholder="Rua, número, bairro..."
-          className="w-full p-2 border rounded-md"
+          className="w-full p-2 border rounded-md focus:ring-red-600 focus:border-red-600 outline-none"
         />
       </div>
 
-      <div className="p-4 bg-gray-50 border-l-4 border-red-600 rounded-r-md">
-        <p className="text-sm text-gray-600">Estimativa do frete:</p>
+      {/* BOX DE FRETE */}
+      <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Entrega via PAC</p>
+        
         {loading ? (
-          <p className="text-lg font-bold animate-pulse">Consultando Correios...</p>
-        ) : (
-          <div className="flex justify-between items-baseline">
-            <p className="text-2xl font-black text-red-900">
-              R$ {freteInfo?.valor || "0,00"}
-            </p>
-            {freteInfo?.prazo && (
-              <span className="text-xs font-semibold text-gray-500">
-                Prazo: {freteInfo.prazo} dias
-              </span>
-            )}
+          <div className="mt-2 flex items-center space-x-2">
+            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm font-medium text-red-600">Calculando frete...</p>
           </div>
+        ) : freteInfo ? (
+          <div className="mt-2 flex justify-between items-end">
+            <div>
+              <p className="text-2xl font-black text-gray-900">
+                {freteInfo.valorFormatado}
+              </p>
+              <p className="text-[10px] text-gray-400 font-medium italic">
+                {freteInfo.prazo}
+              </p>
+            </div>
+            <div className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded font-bold">
+              FRETE CALCULADO
+            </div>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-gray-400">Digite um CEP válido para calcular</p>
         )}
       </div>
     </div>

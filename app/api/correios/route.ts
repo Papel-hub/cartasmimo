@@ -1,180 +1,106 @@
 import { NextResponse } from 'next/server';
 
 /* =========================
-   TIPOS
+    INTERFACES TÉCNICAS
 ========================= */
+interface PrecoProdutoResponse {
+  pcFinal: string;
+  txErro?: string;
+}
 
-type TokenResponse = {
-  token: string;
-  apis?: string[];
-};
-
-type CorreiosMensagem = {
-  msgs?: string[];
-};
-
-type PrecoProduto = {
-  pcFinal?: string;
-  pcExibir?: string;
-  prazoEntrega?: string;
-};
-
-type PrecoResponse =
-  | CorreiosMensagem
-  | { parametrosProduto?: PrecoProduto[] }
-  | PrecoProduto[];
-
-/* =========================
-   HELPERS
-========================= */
-
-function extrairPreco(
-  result: PrecoResponse
-): PrecoProduto | undefined {
-  if (Array.isArray(result)) {
-    return result[0];
-  }
-
-  if ('parametrosProduto' in result) {
-    return result.parametrosProduto?.[0];
-  }
-
-  return undefined;
+interface PrazoProdutoResponse {
+  prazoEntrega?: number;
+  txErro?: string;
 }
 
 /* =========================
-   HANDLER
+    HANDLER DA API
 ========================= */
-
 export async function POST(req: Request) {
   try {
-    const body: { cepDestino?: string } = await req.json();
+    const { cepDestino } = await req.json();
+    if (!cepDestino) return NextResponse.json({ error: 'CEP obrigatório' }, { status: 400 });
 
-    if (!body.cepDestino) {
-      return NextResponse.json(
-        { error: 'CEP de destino é obrigatório' },
-        { status: 400 }
-      );
-    }
+    const cleanCep = cepDestino.replace(/\D/g, '');
+    const CARTAO_POSTAGEM = '0079835201';
+    const CEP_ORIGEM = '79080705';
+    const COD_PAC = '03298';
 
-    const cepDestino = body.cepDestino.replace(/\D/g, '');
-    const contrato = '9912726956';
+    // 1. AUTENTICAÇÃO
+    const auth = Buffer.from(`${process.env.CORREIOS_USER}:${process.env.CORREIOS_PASS}`).toString('base64');
+    const tokenRes = await fetch('https://api.correios.com.br/token/v1/autentica/cartaopostagem', {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numero: CARTAO_POSTAGEM }),
+    });
+    
+    const tokenData = await tokenRes.json();
+    const { token } = tokenData;
+    const { contrato, dr } = tokenData.cartaoPostagem;
 
-    /* =========================
-       1. AUTENTICAÇÃO
-    ========================== */
-
-    const auth = Buffer.from(
-      `${process.env.CORREIOS_USER}:${process.env.CORREIOS_PASS}`
-    ).toString('base64');
-
-    const tokenRes = await fetch(
-      'https://api.correios.com.br/token/v1/autentica/contrato',
-      {
+    // 2. CONSULTA DE PREÇO E PRAZO EM PARALELO (Otimiza o tempo de resposta)
+    const [precoRes, prazoRes] = await Promise.all([
+      fetch('https://api.correios.com.br/preco/v1/nacional', {
         method: 'POST',
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ numero: contrato }),
-      }
-    );
-
-    if (!tokenRes.ok) {
-      const errorText = await tokenRes.text();
-      return NextResponse.json(
-        { error: 'Erro na autenticação', detalhes: errorText },
-        { status: 401 }
-      );
-    }
-
-    const tokenData: TokenResponse = await tokenRes.json();
-    const token = tokenData.token;
-
-    console.log(
-      'APIs liberadas no token:',
-      tokenData.apis ?? 'Nenhuma'
-    );
-
-    /* =========================
-       2. CÁLCULO DE FRETE
-    ========================== */
-
-    const payload = {
-      idLote: '001',
-      parametrosProduto: [
-        {
-          coProduto: '03298', // PAC contrato
-          nuContrato: contrato,
-          cepOrigem: '79080705',
-          cepDestino,
-          psObjeto: '300',
-          tpObjeto: '1',
-          comprimento: '20',
-          largura: '15',
-          altura: '10',
-        },
-      ],
-    };
-
-    const calcRes = await fetch(
-      'https://api.correios.com.br/preco/v3/nacional',
-      {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idLote: "01",
+          parametrosProduto: [{
+            coProduto: COD_PAC,
+            nuRequisicao: "01",
+            nuContrato: contrato,
+            nuDR: dr.toString(),
+            cepOrigem: CEP_ORIGEM,
+            cepDestino: cleanCep,
+            psObjeto: "300",
+            tpObjeto: "1",
+            comprimento: "20",
+            largura: "15",
+            altura: "10"
+          }]
+        }),
+      }),
+      fetch('https://api.correios.com.br/prazo/v1/nacional', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      }
-    );
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idLote: "01",
+          parametrosPrazo: [{
+            coProduto: COD_PAC,
+            nuRequisicao: "01",
+            cepOrigem: CEP_ORIGEM,
+            cepDestino: cleanCep,
+            dataPostagem: new Date().toISOString().split('T')[0]
+          }]
+        }),
+      })
+    ]);
 
-    const result: PrecoResponse = await calcRes.json();
+    const precoData = await precoRes.json();
+    const prazoData = await prazoRes.json();
 
-    console.log(
-      'RESPOSTA CORREIOS:',
-      JSON.stringify(result, null, 2)
-    );
+    // 3. EXTRAÇÃO DOS RESULTADOS
+    const infoPreco: PrecoProdutoResponse = Array.isArray(precoData) ? precoData[0] : precoData.parametrosProduto[0];
+    const infoPrazo: PrazoProdutoResponse = Array.isArray(prazoData) ? prazoData[0] : (prazoData.parametrosPrazo?.[0]);
 
-    /* =========================
-       3. ERROS DE PERMISSÃO
-    ========================== */
-
-    if (
-      'msgs' in result &&
-      result.msgs?.[0]?.includes('GTW-012')
-    ) {
-      return NextResponse.json({
-        valor: '---',
-        prazo: 'API 34 pendente de liberação comercial',
-      });
+    if (infoPreco.txErro || !infoPreco.pcFinal) {
+      return NextResponse.json({ valor: 0, prazo: infoPreco.txErro || 'Serviço indisponível' });
     }
 
-    /* =========================
-       4. EXTRAÇÃO SEGURA
-    ========================== */
-
-    const dados = extrairPreco(result);
+    const valorNumerico = parseFloat(infoPreco.pcFinal.replace(',', '.'));
+    const prazoFinal = infoPrazo?.prazoEntrega 
+      ? `${infoPrazo.prazoEntrega} dias úteis` 
+      : "5 a 12 dias úteis";
 
     return NextResponse.json({
-      valor: dados?.pcFinal ?? dados?.pcExibir ?? '0,00',
-      prazo: dados?.prazoEntrega ?? 'N/A',
+      valor: valorNumerico,
+      valorFormatado: `R$ ${infoPreco.pcFinal}`,
+      prazo: prazoFinal,
+      servico: 'PAC'
     });
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Erro desconhecido';
 
-    console.error('Erro crítico:', message);
-
-    return NextResponse.json(
-      {
-        error: 'Erro de conexão',
-        detalhes:
-          'O servidor dos Correios pode estar instável.',
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('Erro na rota de frete:', error);
+    return NextResponse.json({ error: 'Erro interno ao processar frete' }, { status: 500 });
   }
 }
