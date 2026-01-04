@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 
 // Firebase
@@ -38,7 +37,6 @@ const WHATSAPP_NUMBER = '5567992236484';
 export default function PagamentoPage() {
   const router = useRouter();
 
-  // Estados
   const [cartTotal, setCartTotal] = useState<number>(0);
   const [metodo, setMetodo] = useState<PaymentMethod>('');
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -47,8 +45,6 @@ export default function PagamentoPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
   const [paymentId, setPaymentId] = useState<string | null>(null);
-  
-  // Estados para evitar erro de localStorage no Build
   const [isMounted, setIsMounted] = useState(false);
   const [freteValor, setFreteValor] = useState<number>(0);
   const [fretePrazo, setFretePrazo] = useState<string>('');
@@ -135,7 +131,8 @@ export default function PagamentoPage() {
       logistica: {
         tipo: delivery.tipoEntrega || "digital",
         endereco: delivery.endereco || "Não informado",
-        cpe: delivery.cpe || "Não informado",
+        cpe: delivery.metodoFisico === 'correios' ? (delivery.cep || "Não informado") : "N/A",
+        whatsapp_entrega: (delivery.metodoFisico === 'local' || delivery.metodoFisico === 'taxi') ? delivery.telefoneContatoFisico : (delivery.whatsapp || null),
         metodo_digital: delivery.metodoDigital || null,
         metodo_fisico: delivery.metodoFisico || null,
         prazo_estimado: fretePrazo
@@ -193,17 +190,17 @@ export default function PagamentoPage() {
         ? new Date(savedData.conteudo.data_entrega).toLocaleDateString('pt-BR')
         : 'A combinar';
 
-      const msgParaWpp = `*NOVO PEDIDO: ${savedData.pedidoId}*\n` +
-        `----------------------------------\n` +
-        `*Para:* ${savedData.conteudo.para}\n` +
-        `*Endereço:* ${savedData.logistica.endereco}\n` +
-        `*CEP:* ${savedData.logistica.cpe}\n` +
-        `*Entrega:* ${dataFormatada}\n` +
-        `*Prazo Correios:* ${savedData.logistica.prazo_estimado}\n` +
-        `----------------------------------\n` +
-        `*Total:* R$ ${cartTotal.toFixed(2).replace('.', ',')} (Frete incluso)\n` +
-        `----------------------------------\n` +
-        `Olá! Gostaria de finalizar o pagamento via WhatsApp.`;
+const msgParaWpp = `*NOVO PEDIDO: ${savedData.pedidoId}*\n` +
+  `----------------------------------\n` +
+  `*Para:* ${savedData.conteudo.para}\n` +
+  `*Método:* ${savedData.logistica.metodo_fisico === 'taxi' ? '🚚 Uber/Táxi' : savedData.logistica.metodo_fisico === 'local' ? '🏠 Retirada' : '📦 Correios'}\n` +
+  `*Detalhes:* ${savedData.logistica.endereco}\n` +
+  (savedData.logistica.metodo_fisico === 'correios' ? `*CEP:* ${savedData.logistica.cpe}\n` : '') +
+  `*Data Entrega:* ${dataFormatada}\n` +
+  `----------------------------------\n` +
+  `*Total:* R$ ${cartTotal.toFixed(2).replace('.', ',')}\n` +
+  `----------------------------------\n` +
+  `Olá! Gostaria de finalizar o pagamento via WhatsApp.`;
 
       window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msgParaWpp)}`, '_blank');
     } catch (error) {

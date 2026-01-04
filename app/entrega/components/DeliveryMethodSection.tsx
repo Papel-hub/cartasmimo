@@ -8,8 +8,8 @@ interface DeliveryMethodSectionProps<T extends string> {
   title: string;
   subtitle?: string;
   options: Option<T>[];
-  selected: T | null; // ✅ aceita null
-  onSelect: (value: T) => void; // ✅ agora é uma função simples, não Dispatch
+  selected: T | null; 
+  onSelect: (value: T) => void;
 }
 
 export default function DeliveryMethodSection<T extends string>({
@@ -35,7 +35,7 @@ export default function DeliveryMethodSection<T extends string>({
               name={title}
               value={opt.id}
               checked={selected === opt.id}
-              onChange={() => onSelect(opt.id)} // ✅ chama com valor direto
+              onChange={() => onSelect(opt.id)} 
               className="h-4 w-4 accent-red-900 focus:ring-red-800"
             />
             <span className="text-gray-800">{opt.label}</span>

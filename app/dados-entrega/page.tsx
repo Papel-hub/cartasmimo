@@ -8,13 +8,12 @@ import Footer from '../../components/Footer';
 import DestinatarioField from './components/DestinatarioField';
 import DigitalFields from './components/DigitalFields';
 import FisicaFields from './components/FisicaFields';
-import { MapPinIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 type DeliverySelection = {
   tipoEntrega: 'digital' | 'fisica' | 'ambos';
   dataEntrega: string | null;     
   metodoDigital: 'whatsapp' | 'email' | null; 
-  metodoFisico: 'correios' | 'local' | null;  
+  metodoFisico: 'correios' | 'local' | 'taxi' | null;  
 };
 
 export default function DadosEntregaPage() {
@@ -46,58 +45,68 @@ export default function DadosEntregaPage() {
 
   const isDigital = deliveryData.tipoEntrega === 'digital' || deliveryData.tipoEntrega === 'ambos';
   const isFisica = deliveryData.tipoEntrega === 'fisica' || deliveryData.tipoEntrega === 'ambos';
-  const isLocal = deliveryData.metodoFisico === 'local'; 
 
-  const handleContinue = () => {
-      let isValid = true;
+const handleContinue = () => {
+  let isValid = true;
 
-      // Validações básicas
-      if (!destinatario.trim()) isValid = false;
-      if (isDigital) {
-        if (deliveryData.metodoDigital === 'email' && !email.includes('@')) isValid = false;
-        if (deliveryData.metodoDigital === 'whatsapp' && !whatsapp.trim()) isValid = false;
-      }
-      if (isFisica && !isLocal) {
-        if (!endereco.trim() || !cpe.trim()) isValid = false;
-      }
+  // 1. Validação de Destinatário
+  if (!destinatario.trim()) isValid = false;
 
-      if (!isValid) {
-        alert('Por favor, preencha os campos obrigatórios.');
-        return;
-      }
+  // 2. Validação Digital
+  if (isDigital) {
+    if (deliveryData.metodoDigital === 'email' && !email.includes('@')) isValid = false;
+    if (deliveryData.metodoDigital === 'whatsapp' && !whatsapp.trim()) isValid = false;
+  }
 
-      // --- CONSOLIDAÇÃO DE TODOS OS DADOS ---
-      
-      // Recuperamos o que o componente de frete salvou no storage
-      const valorFrete = localStorage.getItem("valor_frete") || "0";
-      const prazoFrete = localStorage.getItem("prazo_frete") || "A consultar";
+  // 3. Validação Física (Diferenciando CEP de Telefone)
+  if (isFisica) {
+    if (deliveryData.metodoFisico === 'correios') {
+      if (!endereco.trim() || cpe.length < 9) isValid = false; // CEP mínimo
+    } else {
+      // Para Local ou Taxi, o campo 'cpe' (via PhoneInput) deve ter o número
+      if (cpe.length < 10) isValid = false; 
+    }
+  }
 
-      const fullDeliveryData = {
-        ...deliveryData, // Tipo de entrega escolhido antes
-        destinatario: destinatario.trim(),
-        cep: isLocal ? 'RETIRADA' : cpe.replace(/\D/g, ""),
-        endereco: isLocal ? 'LEVANTAMENTO NO LOCAL' : endereco.trim(),
-        
-        // Dados Digitais
-        email: isDigital && deliveryData.metodoDigital === 'email' ? email : null,
-        whatsapp: isDigital && deliveryData.metodoDigital === 'whatsapp' ? whatsapp : null,
-        
-        // Dados Financeiros e Logísticos para o Pagamento
-        detalhesFrete: {
-          valor: isLocal ? 0 : parseFloat(valorFrete),
-          prazo: isLocal ? 'Imediato' : prazoFrete,
-          metodo: isLocal ? 'Retirada Local' : 'PAC Correios'
-        },
-        
-        dataFinalizacao: new Date().toISOString()
-      };
+  if (!isValid) {
+    alert('Por favor, preencha todos os campos corretamente.');
+    return;
+  }
 
-      // SALVA TUDO EM UM ÚNICO OBJETO NO LOCALSTORAGE
-      localStorage.setItem('fullDeliveryData', JSON.stringify(fullDeliveryData));
-      
-      // Redireciona para o pagamento
-      router.push('/pagamento');
-    };
+  // --- CONSOLIDAÇÃO DOS DADOS ---
+  const valorFrete = localStorage.getItem("valor_frete") || "0";
+  const prazoFrete = localStorage.getItem("prazo_frete") || "A combinar";
+
+  const fullDeliveryData = {
+    ...deliveryData,
+    destinatario: destinatario.trim(),
+    
+    // Lógica Inteligente para Endereço/WhatsApp
+    // Se for Correios, salva o endereço. Se for Taxi/Local, salva o contato.
+    endereco: deliveryData.metodoFisico === 'correios' ? endereco.trim() : `Combinar entrega via WhatsApp: ${cpe}`,
+    cep: deliveryData.metodoFisico === 'correios' ? cpe.replace(/\D/g, "") : "N/A",
+    
+    // Salva o telefone específico de contato para a logística física
+    telefoneContatoFisico: (deliveryData.metodoFisico === 'local' || deliveryData.metodoFisico === 'taxi') ? cpe : null,
+
+    // Dados Digitais
+    email: isDigital && deliveryData.metodoDigital === 'email' ? email : null,
+    whatsappDigital: isDigital && deliveryData.metodoDigital === 'whatsapp' ? whatsapp : null,
+    
+    detalhesFrete: {
+      valor: deliveryData.metodoFisico === 'correios' ? parseFloat(valorFrete) : 0,
+      prazo: deliveryData.metodoFisico === 'correios' ? prazoFrete : "A combinar com o suporte",
+      metodo: deliveryData.metodoFisico // 'correios', 'local' ou 'taxi'
+    },
+    
+    dataFinalizacao: new Date().toISOString()
+  };
+
+  // SALVA TUDO NO LOCALSTORAGE
+  localStorage.setItem('fullDeliveryData', JSON.stringify(fullDeliveryData));
+  
+  router.push('/pagamento');
+};
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -141,39 +150,23 @@ export default function DadosEntregaPage() {
               <section className="space-y-4 animate-in fade-in duration-700">
                 <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3">
                   <span className="w-8 h-px bg-gray-200"></span>
-                  {isLocal ? 'Instruções de Recolha' : 'Dados de Envio (Correios)'}
+                  {deliveryData.metodoFisico === 'correios' ? 'Dados de Envio' : 'Dados de Contato'}
                 </h2>
 
-                {isLocal ? (
-                  <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 space-y-4">
-                    <div className="flex gap-4">
-                      <div className="bg-indigo-600 p-2.5 rounded-xl text-white h-fit shadow-md shadow-indigo-200">
-                        <MapPinIcon className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-indigo-950 text-base">Ponto de Recolha</p>
-                        <p className="text-indigo-800/80 text-sm leading-relaxed">
-                          Rua Exemplo, 123 - Centro<br />
-                          Campo Grande - MS
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-4 pt-2 border-t border-indigo-200/50">
-                      <ClockIcon className="w-5 h-5 text-indigo-500" />
-                      <p className="text-xs text-indigo-700 font-medium">
-                        {/* Trocado selectedDate por dataEntrega */}
-                        Disponível em: {deliveryData.dataEntrega ? new Date(deliveryData.dataEntrega).toLocaleDateString('pt-BR') : 'A definir'} <br />
-                        Horário: a partir das 14:00h
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <FisicaFields
-                    endereco={endereco} setEndereco={setEndereco}
-                    cpe={cpe} setCpe={setCpe}
-                  />
+                {/* CASO 1: RETIRADA NO LOCAL (Mantemos o card informativo azul) */}
+                {deliveryData.metodoFisico === 'local' && (
+                  <div ></div>
                 )}
+
+                {/* CASO 2: CORREIOS OU TAXI (Ambos usam o FisicaFields agora) */}
+                {/* Passamos o 'method' para o FisicaFields decidir se pede CEP ou WhatsApp */}
+                <FisicaFields
+                  method={deliveryData.metodoFisico} 
+                  endereco={endereco}
+                  setEndereco={setEndereco}
+                  cpe={cpe}
+                  setCpe={setCpe}
+                />
               </section>
             )}
 

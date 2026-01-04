@@ -106,13 +106,13 @@ const handleGoToNextStep = () => {
       from: isChecked ? 'Anônimo' : from || '',
       to: to || '',
       message: mensagemFinal || '',
-      format: selectedFormat,
+      format: selectedFormat, // 'digital', 'fisica', 'full_premium', etc.
       price: prices[selectedFormat],
       timestamp: Date.now(),
     };
 
     localStorage.setItem('mimo_mensagem', JSON.stringify(mensagemData));
-    
+
     // Verificação de para onde enviar o usuário
     const needsAudio = ['digital_audio', 'digital_audio_video', 'full_premium'].includes(selectedFormat);
     const needsVideo = ['digital_video', 'digital_audio_video', 'full_premium'].includes(selectedFormat);

@@ -61,7 +61,7 @@ export interface OrderSchema {
     cpe: string | null;
     metodo_digital: string | null;
     metodo_fisico: string | null;
-    // --- NOVOS CAMPOS ADICIONADOS ---
+    whatsapp_entrega?: string | null;
     prazo_estimado?: string | null; 
   };
   financeiro: {
@@ -69,7 +69,6 @@ export interface OrderSchema {
     metodo: string;
     payment_id: string | null;
     payment_status: string;
-    // --- NOVOS CAMPOS ADICIONADOS ---
     valor_produto?: number;
     valor_frete?: number;
   };
