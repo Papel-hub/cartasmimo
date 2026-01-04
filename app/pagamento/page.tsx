@@ -193,7 +193,7 @@ export default function PagamentoPage() {
 const msgParaWpp = `*NOVO PEDIDO: ${savedData.pedidoId}*\n` +
   `----------------------------------\n` +
   `*Para:* ${savedData.conteudo.para}\n` +
-  `*Método:* ${savedData.logistica.metodo_fisico === 'taxi' ? '🚚 Uber/Táxi' : savedData.logistica.metodo_fisico === 'local' ? '🏠 Retirada' : '📦 Correios'}\n` +
+  `*Método:* ${savedData.logistica.metodo_fisico === 'taxi' ? 'Uber/Táxi' : savedData.logistica.metodo_fisico === 'local' ? 'Retirada' : 'Correios'}\n` +
   `*Detalhes:* ${savedData.logistica.endereco}\n` +
   (savedData.logistica.metodo_fisico === 'correios' ? `*CEP:* ${savedData.logistica.cpe}\n` : '') +
   `*Data Entrega:* ${dataFormatada}\n` +
