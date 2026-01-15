@@ -14,13 +14,12 @@ const circularStd = localFont({
 const siteUrl = "https://cartasdamimo.com";
 
 export const metadata: Metadata = {
-  title: "Mimo Meu e Seu | Cestas e Cartões de Presente Personalizados",
+  title: "Mimo Meu e Seu | Cartões de Presente Personalizados",
   description:
-    "Crie listas de presentes e cartões personalizados para surpreender quem você ama. Compartilhe carinho, memórias e momentos especiais de forma única.",
+    "Crie cartões personalizados para surpreender quem você ama. Compartilhe carinho, memórias e momentos especiais de forma única.",
   authors: [{ name: "Marco Morais" }],
   keywords: [
     "presentes personalizados",
-    "listas de presentes",
     "cartões de presente",
     "romance",
     "família",
@@ -43,7 +42,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
           {
-            url: "/android-chrome-512x512.png", // ou o nome que sua imagem tiver
+            url: "/android-chrome-512x512.png",
             width: 512,
             height: 512,
             alt: "Um carinho da Mimo para você",
@@ -89,6 +88,7 @@ export default function RootLayout({
         <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
         <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111827" />
         <meta name="color-scheme" content="light dark" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-sans antialiased bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
         <div className="relative z-10">{children}</div>

@@ -24,13 +24,15 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/home" className="flex-shrink-0">
+          <Link href="/home" style={{ width: '120px' }}>
             <Image
-              src="/images/logopc.svg"
+
+              src="/images/logopc1.svg"
               alt="Mimo Meu e Seu"
               width={120}
-              height={60}
+              height={50}
               priority
+              style={{ height: 'auto', width: 'auto' }}
             />
           </Link>
         </div>

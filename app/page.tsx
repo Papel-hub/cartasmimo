@@ -72,8 +72,9 @@ export default function WelcomePage() {
             width={180}
             height={60}
             priority
-            style={{ height: 'auto', width: 'auto' }}
-          />
+        style={{ height: 'auto', width: 'auto' }}
+
+         />
         </div>
 
         <div className="relative w-3/4 max-w-xs aspect-square rounded-full overflow-hidden shadow-xl mt-12">
@@ -109,20 +110,24 @@ export default function WelcomePage() {
       </div>
 
       {/* DIREITA - Conteúdo */}
-<div className="relative w-full md:w-1/2 flex flex-col justify-center p-6 md:p-12 bg-white">
-  
-  {/* Logo centralizada acima do conteúdo */}
-  <div className="flex justify-center mb-8">
-    <Image
-      src="/images/logo1.svg"
-      alt="Mimo Meu e Seu"
-      width={60}
-      height={60}
-      style={{ height: 'auto', width: 'auto' }}
-      priority
-    />
-        </div>
+      <div className="w-full md:w-1/2 flex flex-col justify-center p-6 md:p-12">
         <div className="max-w-md mx-auto w-full space-y-6">
+          {/* Vídeo com overlay */}
+          <div className="relative w-full flex items-center justify-center rounded-xl overflow-hidden shadow-sm bg-white aspect-video max-w-xs mx-auto">
+            <video
+              ref={videoRef}
+              src="/videos/splash.mp4"
+              muted
+              loop
+              playsInline
+              autoPlay
+              preload="auto"
+              className="w-full h-full object-cover"
+              aria-label="Vídeo de introdução da plataforma"
+            />
+
+          </div>
+
           {/* Botões */}
           <div className="space-y-4">
             <button

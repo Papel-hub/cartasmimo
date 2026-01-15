@@ -85,6 +85,8 @@ export default function FormatoSelector({
   onSelectFormat,
   prices,
 }: FormatoSelectorProps) {
+
+  if (!prices || typeof prices !== 'object') return null;
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">

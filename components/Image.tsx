@@ -9,6 +9,8 @@ export default function ImageCard() {
         alt="cartão"
         width={800} // largura real ou aproximada
         height={400} // altura real ou aproximada
+        priority
+        style={{ height: 'auto', width: 'auto' }}
       />
     </div>
   );

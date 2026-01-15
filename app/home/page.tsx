@@ -10,7 +10,6 @@ import MensagemForm from './components/MensagemForm';
 import BtnCoracao from './components/BtnCoracao';
 import CartasDoCoracaoSelector from './components/CartasDoCoracaoSelector';
 
-// Importações do Firebase
 import { db } from '../../lib/firebaseConfig'; 
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 
@@ -19,10 +18,13 @@ interface Carta {
   titulo: string;
   conteudo: string;
 }
+
 export default function HomePage() {
   const router = useRouter();
   
-  // Estados do Formulário
+  // Controle de montagem para evitar erros de Hidratação/Client-side exception
+  const [isMounted, setIsMounted] = useState(false);
+  
   const [isChecked, setIsChecked] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -31,7 +33,6 @@ export default function HomePage() {
   const [mensagemSelecionada, setMensagemSelecionada] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<FormatoTipo>('digital');
   
-  // Estados de Dados do Firebase
   const [loading, setLoading] = useState(true);
   const [cartasDoCoracao, setCartasDoCoracao] = useState<Carta[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -44,30 +45,28 @@ export default function HomePage() {
     full_premium: 10,
   });
 
-useEffect(() => {
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // 1. Buscar Mensagens Predefinidas
-      const querySnapshot = await getDocs(collection(db, "mensagens_predefinidas"));
-      const frases: Carta[] = [];
-      
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.texto) {
-          frases.push({
-            id: doc.id,
-            titulo: data.titulo || "Sem Título", // Fallback caso não tenha título
-            conteudo: data.texto
-          });
-        }
-      });
-      setCartasDoCoracao(frases);
+  useEffect(() => {
+    setIsMounted(true);
 
-        // 2. Buscar Preços (Documento específico)
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const querySnapshot = await getDocs(collection(db, "mensagens_predefinidas"));
+        const frases: Carta[] = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            titulo: data.titulo || "Sem Título",
+            conteudo: data.texto || ""
+          };
+        }).filter(f => f.conteudo !== "");
+        
+        setCartasDoCoracao(frases);
+
         const precosDoc = await getDoc(doc(db, "precos_carta", "precos"));
         if (precosDoc.exists()) {
-          setPrices(precosDoc.data() as Record<FormatoTipo, number>);
+          // Fazemos um merge com os preços iniciais para garantir que nenhuma chave fique undefined
+          setPrices(prev => ({ ...prev, ...precosDoc.data() }));
         }
       } catch (error) {
         console.error("Erro ao carregar dados do Firebase:", error);
@@ -79,26 +78,21 @@ useEffect(() => {
     fetchData();
   }, []);
 
-const handleGoToNextStep = () => {
+  const handleGoToNextStep = () => {
+    if (typeof window === 'undefined') return;
+
     if (!to || (!message && !mensagemSelecionada)) {
       alert("Por favor, preencha para quem é o Mimo e a mensagem.");
       return;
     }
 
-    // 1. Limpeza de Segurança (Reset)
-    // Isso garante que se o usuário pulou a página de mídia, 
-    // não exista nenhuma URL antiga sobrando no navegador.
-    localStorage.removeItem('mimo_final_audio');
-    localStorage.removeItem('mimo_final_video');
-    localStorage.removeItem('mimo_midia_audio'); 
-    localStorage.removeItem('mimo_midia_video'); 
-
-    localStorage.removeItem('valor_frete'); 
-    localStorage.removeItem('prazo_frete'); 
-    localStorage.removeItem('servico_frete'); 
-    localStorage.removeItem('frete_info_completo'); 
-
-    localStorage.removeItem('deliverySelection'); 
+    // Limpeza segura de localStorage
+    const keysToRemove = [
+      'mimo_final_audio', 'mimo_final_video', 'mimo_midia_audio', 
+      'mimo_midia_video', 'valor_frete', 'prazo_frete', 
+      'servico_frete', 'frete_info_completo', 'deliverySelection'
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
 
     const mensagemFinal = usarCarta && mensagemSelecionada ? mensagemSelecionada : message;
     
@@ -106,14 +100,13 @@ const handleGoToNextStep = () => {
       from: isChecked ? 'Anônimo' : from || '',
       to: to || '',
       message: mensagemFinal || '',
-      format: selectedFormat, // 'digital', 'fisica', 'full_premium', etc.
-      price: prices[selectedFormat],
+      format: selectedFormat,
+      price: prices[selectedFormat] || 0,
       timestamp: Date.now(),
     };
 
     localStorage.setItem('mimo_mensagem', JSON.stringify(mensagemData));
 
-    // Verificação de para onde enviar o usuário
     const needsAudio = ['digital_audio', 'digital_audio_video', 'full_premium'].includes(selectedFormat);
     const needsVideo = ['digital_video', 'digital_audio_video', 'full_premium'].includes(selectedFormat);
 
@@ -124,11 +117,12 @@ const handleGoToNextStep = () => {
     } else if (needsAudio) {
       router.push('/midia?tipo=audio');
     } else {
-      // Se for "digital" simples, ele cai aqui. 
-      // Como limpamos o localStorage acima, o Firebase salvará NULL corretamente.
       router.push('/entrega');
     }
   };
+
+  // Se não estiver montado, retorna um container vazio ou skeleton para evitar erro de SSR
+  if (!isMounted) return <div className="min-h-screen bg-gray-50" />;
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -144,7 +138,6 @@ const handleGoToNextStep = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
             
-            {/* COLUNA 1: PREVIEW */}
             <div className="lg:sticky lg:top-32 order-1">
               <div className="bg-white/50 rounded-3xl border border-dashed border-gray-200 lg:border-none lg:p-0">
                 <MensagemPreview 
@@ -156,7 +149,6 @@ const handleGoToNextStep = () => {
               </div>
             </div>
 
-            {/* COLUNA 2: FORMULÁRIO */}
             <div className="space-y-8 bg-white p-6 rounded-lg shadow-xl shadow-gray-200/60 border border-gray-100 order-2">
               <MensagemForm
                 isChecked={isChecked}
@@ -182,15 +174,14 @@ const handleGoToNextStep = () => {
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-900"></div>
                       </div>
                     ) : (
-<CartasDoCoracaoSelector
-  cartas={cartasDoCoracao}
-  selectedId={selectedId} 
-  onSelect={(carta) => {
-    setSelectedId(carta.id);
-    setMessage(carta.conteudo); 
-    // Se quiser que fique aberto para leitura, remova o setUsarCarta(false) daqui
-  }}
-/>
+                      <CartasDoCoracaoSelector
+                        cartas={cartasDoCoracao}
+                        selectedId={selectedId} 
+                        onSelect={(carta) => {
+                          setSelectedId(carta.id);
+                          setMessage(carta.conteudo); 
+                        }}
+                      />
                     )}
                   </div>
                 )}
@@ -198,11 +189,10 @@ const handleGoToNextStep = () => {
 
               <hr className="border-gray-50" />
 
-              {/* Passamos os preços carregados do Firebase para o seletor */}
               <FormatoSelector
                 selectedFormat={selectedFormat}
                 onSelectFormat={setSelectedFormat}
-                prices={prices} // Verifique se o seu FormatoSelector aceita essa prop
+                prices={prices} 
               />
 
               <button
@@ -213,8 +203,9 @@ const handleGoToNextStep = () => {
                 {loading ? (
                   "Carregando..."
                 ) : (
-                  prices[selectedFormat] > 0 
-                    ? `Continuar • R$ ${prices[selectedFormat].toFixed(2).replace('.', ',')}` 
+                  // Proteção extra aqui: prices[selectedFormat] ?? 0
+                  (prices[selectedFormat] ?? 0) > 0 
+                    ? `Continuar • R$ ${(prices[selectedFormat] ?? 0).toFixed(2).replace('.', ',')}` 
                     : 'Continuar'
                 )}
               </button>

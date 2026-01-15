@@ -18,6 +18,8 @@ export default function MensagemPreview({ from, to, message, isChecked }: Mensag
         width={500}
         height={500}
         className="w-full h-auto select-none"
+        priority
+        style={{ height: 'auto', width: 'auto' }}
       />
       <div className="font-semibold absolute text-[10px] sm:text-xs top-[49%] sm:top-[50%] left-[13%] sm:left-[13%] w-[32%] sm:w-[31%] h-[5%] text-gray-500 whitespace-pre-line break-words overflow-hidden leading-tight">
         {!isChecked && from ? from : 'Nome'}
